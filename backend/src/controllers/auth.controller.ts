@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { sql } from '../database/setup';
-import { logger } from '../utils/logger';
+import { sql } from '../database/setup.js';
+import { logger } from '../utils/logger.js';
 
 export const login = async (req: Request, res: Response) => {
   try {

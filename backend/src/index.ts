@@ -2,12 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { config } from 'dotenv';
-import { errorHandler } from './middleware/errorHandler';
-import { authRoutes } from './routes/auth.routes';
-import { accountRoutes } from './routes/account.routes';
-import { sessionRoutes } from './routes/session.routes';
-import { setupDatabase } from './database/setup';
-import { logger } from './utils/logger';
+import { errorHandler } from './middleware/errorHandler.js';
+import { authRoutes } from './routes/auth.routes.js';
+import { accountRoutes } from './routes/account.routes.js';
+import { sessionRoutes } from './routes/session.routes.js';
+import { serviceRoutes } from './routes/service.routes.js';
+import { setupDatabase } from './database/setup.js';
+import { logger } from './utils/logger.js';
 
 config();
 
@@ -23,6 +24,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/sessions', sessionRoutes);
+app.use('/api/services', serviceRoutes);
 
 // Error handling
 app.use(errorHandler);
@@ -32,7 +34,7 @@ setupDatabase().then(() => {
   app.listen(PORT, () => {
     logger.info(`Backend server running on port ${PORT}`);
   });
-}).catch(error => {
+}).catch((error: Error) => {
   logger.error('Failed to start server:', error);
   process.exit(1);
 });

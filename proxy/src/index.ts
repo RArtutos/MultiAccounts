@@ -3,13 +3,14 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import cors from 'cors';
 import helmet from 'helmet';
 import { config } from 'dotenv';
-import { logger } from './utils/logger';
-import { verifyToken } from './middleware/auth';
+import { logger } from './utils/logger.js';
+import { verifyToken } from './middleware/auth.js';
+import { getServiceConfig } from './services/config.js';
 
 config();
 
 const app = express();
-const PORT = process.env.PROXY_PORT || 8080;
+const PORT = process.env.PORT || 8080;
 
 app.use(cors());
 app.use(helmet());
@@ -18,30 +19,28 @@ app.use(express.json());
 // Verificación de token para todas las rutas
 app.use(verifyToken);
 
-// Configuración de proxy para Netflix
-app.use('/netflix', createProxyMiddleware({
-  target: process.env.NETFLIX_BASE_URL,
-  changeOrigin: true,
-  pathRewrite: {
-    '^/netflix': '',
-  },
-  onProxyReq: (proxyReq, req, res) => {
-    logger.info(`Proxy request to Netflix: ${req.path}`);
-  },
-}));
+// Middleware dinámico para servicios
+app.use('/:service', async (req, res, next) => {
+  try {
+    const service = req.params.service;
+    const config = await getServiceConfig(service);
+    
+    if (!config) {
+      return res.status(404).json({ error: 'Servicio no encontrado' });
+    }
 
-// Configuración de proxy para YouTube
-app.use('/youtube', createProxyMiddleware({
-  target: process.env.YOUTUBE_BASE_URL,
-  changeOrigin: true,
-  pathRewrite: {
-    '^/youtube': '',
-  },
-  onProxyReq: (proxyReq, req, res) => {
-    logger.info(`Proxy request to YouTube: ${req.path}`);
-  },
-}));
-
-app.listen(PORT, () => {
-  logger.info(`Proxy server running on port ${PORT}`);
+    return createProxyMiddleware({
+      target: config.baseUrl,
+      changeOrigin: true,
+      pathRewrite: {
+        [`^/${service}`]: '',
+      },
+      onProxyReq: (proxyReq, req) => {
+        logger.info(`Proxy request to ${service}: ${req.originalUrl}`);
+      },
+    })(req, res, next);
+  } catch (error) {
+    logger.error('Proxy error:', error);
+    res.status(500).json({ error: 'Error en el proxy' });
+  }
 });

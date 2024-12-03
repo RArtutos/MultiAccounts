@@ -1,6 +1,6 @@
 import postgres from 'postgres';
 import { config } from 'dotenv';
-import { logger } from '../utils/logger';
+import { logger } from '../utils/logger.js';
 
 config();
 
@@ -25,9 +25,19 @@ export async function setupDatabase() {
     `;
 
     await sql`
+      CREATE TABLE IF NOT EXISTS streaming_services (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        base_url VARCHAR(255) NOT NULL,
+        logo TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    await sql`
       CREATE TABLE IF NOT EXISTS accounts (
         id SERIAL PRIMARY KEY,
-        service VARCHAR(100) NOT NULL,
+        service_id INTEGER REFERENCES streaming_services(id),
         credentials JSONB NOT NULL,
         max_users INTEGER NOT NULL,
         status VARCHAR(50) NOT NULL,
