@@ -1,5 +1,5 @@
 import express from 'express';
-import { createProxyMiddleware } from 'http-proxy-middleware';
+import { createProxyMiddleware, Options } from 'http-proxy-middleware';
 import cors from 'cors';
 import helmet from 'helmet';
 import { config } from 'dotenv';
@@ -12,6 +12,7 @@ config();
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+// Middleware
 app.use(cors());
 app.use(helmet());
 app.use(express.json());
@@ -29,18 +30,24 @@ app.use('/:service', async (req, res, next) => {
       return res.status(404).json({ error: 'Servicio no encontrado' });
     }
 
-    return createProxyMiddleware({
+    const proxyOptions: Options = {
       target: config.baseUrl,
       changeOrigin: true,
       pathRewrite: {
         [`^/${service}`]: '',
       },
-      onProxyReq: (proxyReq, req) => {
-        logger.info(`Proxy request to ${service}: ${req.originalUrl}`);
+      onProxyReq: (proxyReq, req: express.Request) => {
+        logger.info(`Proxy request to ${service}: ${req.url}`);
       },
-    })(req, res, next);
+    };
+
+    return createProxyMiddleware(proxyOptions)(req, res, next);
   } catch (error) {
     logger.error('Proxy error:', error);
     res.status(500).json({ error: 'Error en el proxy' });
   }
+});
+
+app.listen(PORT, () => {
+  logger.info(`Proxy server running on port ${PORT}`);
 });

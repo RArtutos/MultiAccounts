@@ -1,15 +1,6 @@
 import { sql } from './db.js';
 import { logger } from '../utils/logger.js';
-
-interface ServiceConfig {
-  baseUrl: string;
-  name: string;
-}
-
-interface ServiceRow {
-  name: string;
-  baseUrl: string;
-}
+import { ServiceConfig, ServiceRow } from '../types/index.js';
 
 export async function getServiceConfig(serviceName: string): Promise<ServiceConfig | null> {
   try {
