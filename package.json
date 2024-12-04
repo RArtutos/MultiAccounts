@@ -4,13 +4,14 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:client": "vite",
+    "dev:server": "tsx watch --loader tsconfig-paths/register src/server/index.ts",
     "build": "tsc && vite build",
     "build:server": "tsc -p tsconfig.server.json",
     "lint": "eslint .",
     "preview": "vite preview",
-    "server": "node dist/server/index.js",
-    "dev:server": "tsx watch src/server/index.ts"
+    "server": "node dist/server/index.js"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.24.1",
@@ -20,6 +21,7 @@
     "better-sqlite3": "^9.4.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
+    "concurrently": "^8.2.2",
     "cors": "^2.8.5",
     "date-fns": "^3.3.1",
     "express": "^4.18.2",
@@ -30,6 +32,7 @@
     "react-hook-form": "^7.50.1",
     "react-router-dom": "^6.22.1",
     "tailwind-merge": "^2.2.1",
+    "tsconfig-paths": "^4.2.0",
     "zod": "^3.22.4",
     "zustand": "^4.5.1"
   },

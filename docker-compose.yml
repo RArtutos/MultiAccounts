@@ -3,16 +3,20 @@ version: '3.8'
 services:
   app:
     build: .
-    expose:
-      - "4173"  # Changed to expose Vite's preview port internally
+    ports:
+      - "3000:3000"  # Backend API port
+      - "4173:4173"  # Frontend Vite port
     volumes:
       - ./data:/app/data
+      - .:/app
+      - /app/node_modules
     environment:
       - NODE_ENV=production
       - JWT_SECRET=your-secret-key-change-in-production
-      - HOST=0.0.0.0  # Allow external connections
+      - HOST=0.0.0.0
     networks:
       - app_network
+    command: npm run dev
     restart: unless-stopped
 
   nginx:

@@ -1,12 +1,16 @@
 {
-  "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "ESNext",
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
     "outDir": "dist",
-    "noEmit": false,
-    "baseUrl": ".",
+    "rootDir": "src",
+    "strict": true,
+    "skipLibCheck": true,
+    "baseUrl": "src",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./*"]
     }
   },
   "include": ["src/server/**/*", "src/lib/**/*"],

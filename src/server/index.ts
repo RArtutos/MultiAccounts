@@ -1,18 +1,18 @@
 import express from 'express';
 import cors from 'cors';
 import { json } from 'body-parser';
-import { authRouter } from './routes/auth';
-import { usersRouter } from './routes/users';
-import { accountsRouter } from './routes/accounts';
-import { subscriptionsRouter } from './routes/subscriptions';
-import { devicesRouter } from './routes/devices';
-import { logsRouter } from './routes/logs';
-import { statsRouter } from './routes/stats';
-import { errorHandler } from './middleware/error-handler';
-import { authenticate } from './middleware/authenticate';
-import { db } from '@/lib/db';
-import { hashPassword } from '@/lib/auth';
-import { generateId } from '@/lib/utils';
+import { authRouter } from './routes/auth.js';
+import { usersRouter } from './routes/users.js';
+import { accountsRouter } from './routes/accounts.js';
+import { subscriptionsRouter } from './routes/subscriptions.js';
+import { devicesRouter } from './routes/devices.js';
+import { logsRouter } from './routes/logs.js';
+import { statsRouter } from './routes/stats.js';
+import { errorHandler } from './middleware/error-handler.js';
+import { authenticate } from './middleware/authenticate.js';
+import { db } from '../lib/db.js';
+import { hashPassword } from '../lib/auth.js';
+import { generateId } from '../lib/utils.js';
 
 const app = express();
 
