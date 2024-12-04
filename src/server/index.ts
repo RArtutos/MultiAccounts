@@ -10,11 +10,45 @@ import { logsRouter } from './routes/logs';
 import { statsRouter } from './routes/stats';
 import { errorHandler } from './middleware/error-handler';
 import { authenticate } from './middleware/authenticate';
+import { db } from '@/lib/db';
+import { hashPassword } from '@/lib/auth';
+import { generateId } from '@/lib/utils';
 
 const app = express();
 
 app.use(cors());
 app.use(json());
+
+// Create default admin user if it doesn't exist
+const createDefaultAdmin = async () => {
+  const adminEmail = 'admin@example.com';
+  const existingAdmin = db.prepare('SELECT * FROM users WHERE email = ?').get(adminEmail);
+  
+  if (!existingAdmin) {
+    const now = new Date().toISOString();
+    const hashedPassword = await hashPassword('admin123');
+    
+    const admin = {
+      id: generateId(),
+      email: adminEmail,
+      password: hashedPassword,
+      name: 'Admin User',
+      role: 'admin',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    db.prepare(`
+      INSERT INTO users (id, email, password, name, role, createdAt, updatedAt)
+      VALUES (@id, @email, @password, @name, @role, @createdAt, @updatedAt)
+    `).run(admin);
+
+    console.log('Default admin user created');
+  }
+};
+
+// Initialize admin user
+createDefaultAdmin().catch(console.error);
 
 // Public routes
 app.use('/api/auth', authRouter);
