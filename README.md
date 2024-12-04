@@ -1,94 +1,72 @@
-# Sistema de Gestión de Cuentas de Streaming
+# Account Management System
 
-Sistema centralizado para gestionar cuentas de servicios de streaming con proxy reverso integrado.
+A fully functional, production-ready account management system with proxy support and browser automation.
 
-## Características
+## Features
 
-- Panel de administración para gestión de servicios y cuentas
-- Sistema de proxy reverso dinámico para redirección de servicios
-- Gestión de usuarios y permisos
-- Control de acceso y límites por cuenta
-- Interfaz moderna y responsiva
-- Sistema de logs y monitoreo
-- Configuración dinámica de servicios de streaming
+- User management with role-based access control
+- Service account management (Netflix, YouTube, etc.)
+- Subscription management with time-based access
+- Device management with limits per account
+- Activity logging
+- Proxy support for secure access
+- Browser automation for account access
+- SSL encryption for all connections
 
-## Estructura del Proyecto
+## Prerequisites
 
-```
-├── frontend/          # Aplicación React (Vite)
-├── backend/           # API Node.js (Express)
-├── proxy/            # Servidor proxy reverso
-├── docs/             # Documentación detallada
-└── docker/           # Configuración de Docker
-```
+- Docker and Docker Compose
+- Node.js 20 or later
+- SSL certificates (for production)
 
-## Requisitos Previos
+## Installation
 
-- Docker
-- Docker Compose
-- Node.js 18 o superior (para desarrollo)
+1. Clone the repository
+2. Create SSL certificates or use Let's Encrypt:
+   ```bash
+   mkdir ssl
+   openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ssl/key.pem -out ssl/cert.pem
+   ```
 
-## Configuración del Entorno
+3. Start the services:
+   ```bash
+   docker-compose up -d
+   docker-compose -f docker-compose.proxy.yml up -d
+   ```
 
-1. Clonar el repositorio:
-```bash
-git clone https://github.com/tu-usuario/proxy-streaming-manager.git
-cd proxy-streaming-manager
-```
+4. The application will be available at:
+   - Frontend: https://localhost
+   - API: https://localhost/api
+   - Proxy: localhost:3128
+   - Selenium Grid: http://localhost:4444
 
-2. Configurar variables de entorno:
-```bash
-cp .env.example .env
-```
+## Configuration
 
-3. Iniciar con Docker Compose:
-```bash
-docker-compose up --build
-```
+1. Environment variables (create a `.env` file):
+   ```
+   NODE_ENV=production
+   JWT_SECRET=your-secret-key-change-in-production
+   ```
 
-## Desarrollo Local
+2. Update the Nginx configuration in `nginx.conf` with your domain.
 
-1. Instalar dependencias:
-```bash
-npm install
-```
+3. Configure the proxy settings in `squid.conf` if needed.
 
-2. Iniciar en modo desarrollo:
-```bash
-npm run dev
-```
+## Usage
 
-## Administración
+1. Access the admin panel at https://localhost
+2. Create service accounts
+3. Add users and assign subscriptions
+4. Monitor activity through the logs
 
-### Gestión de Servicios
-- Acceder al panel de administración
-- Ir a "Servicios de Streaming"
-- Agregar nuevos servicios con:
-  - Nombre del servicio
-  - URL base
-  - Logo
-  - Configuraciones específicas
+## Security
 
-### Gestión de Cuentas
-- Crear cuentas para servicios configurados
-- Establecer límites de usuarios
-- Monitorear uso actual
+- All traffic is encrypted with SSL
+- JWT authentication for API access
+- Proxy support for anonymous access
+- Rate limiting and request validation
+- Secure password hashing
 
-## Seguridad
-
-- Autenticación mediante JWT
-- Variables de entorno para credenciales
-- Rate limiting y protección contra ataques
-- Logs de seguridad
-- Proxy reverso con validación de tokens
-
-## Documentación
-
-- [Guía de Usuario](./docs/user-guide.md)
-- [Manual de Administración](./docs/admin-guide.md)
-- [API Reference](./docs/api-reference.md)
-- [Arquitectura](./docs/architecture.md)
-
-## Licencia
+## License
 
 MIT
