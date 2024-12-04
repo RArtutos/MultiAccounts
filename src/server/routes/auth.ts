@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { db } from '@/lib/db';
-import { loginSchema, registerSchema, hashPassword, verifyPassword, generateToken } from '@/lib/auth';
-import { generateId } from '@/lib/utils';
+import { db } from '../lib/db.js';
+import { loginSchema, registerSchema, hashPassword, verifyPassword, generateToken } from '../lib/auth.js';
+import { generateId } from '../lib/utils.js';
 
 const router = Router();
 

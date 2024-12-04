@@ -12,10 +12,6 @@ export default defineConfig({
       '@': resolve(__dirname, './src'),
     },
   },
-  preview: {
-    host: '0.0.0.0',
-    port: 4173,
-  },
   server: {
     host: '0.0.0.0',
     port: 4173,
@@ -23,6 +19,7 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:3000',
         changeOrigin: true,
+        secure: false,
       },
     },
   },

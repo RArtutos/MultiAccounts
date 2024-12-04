@@ -10,9 +10,9 @@ import { logsRouter } from './routes/logs.js';
 import { statsRouter } from './routes/stats.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { authenticate } from './middleware/authenticate.js';
-import { db } from '../lib/db.js';
-import { hashPassword } from '../lib/auth.js';
-import { generateId } from '../lib/utils.js';
+import { db } from './lib/db.js';
+import { hashPassword } from './lib/auth.js';
+import { generateId } from './lib/utils.js';
 
 const app = express();
 

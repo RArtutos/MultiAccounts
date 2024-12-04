@@ -4,14 +4,14 @@ services:
   app:
     build: .
     ports:
-      - "3000:3000"  # Backend API port
-      - "4173:4173"  # Frontend Vite port
+      - "3000:3000"
+      - "4173:4173"
     volumes:
       - ./data:/app/data
       - .:/app
       - /app/node_modules
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - JWT_SECRET=your-secret-key-change-in-production
       - HOST=0.0.0.0
     networks:
