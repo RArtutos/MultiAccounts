@@ -3,26 +3,33 @@ version: '3.8'
 services:
   app:
     build: .
-    ports:
-      - "3000:3000"
+    expose:
+      - "4173"  # Changed to expose Vite's preview port internally
     volumes:
       - ./data:/app/data
     environment:
       - NODE_ENV=production
       - JWT_SECRET=your-secret-key-change-in-production
+      - HOST=0.0.0.0  # Allow external connections
+    networks:
+      - app_network
     restart: unless-stopped
 
   nginx:
     image: nginx:alpine
     ports:
       - "80:80"
-      - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
     depends_on:
       - app
+    networks:
+      - app_network
     restart: unless-stopped
+
+networks:
+  app_network:
+    driver: bridge
 
 volumes:
   data:
