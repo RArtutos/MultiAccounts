@@ -1,7 +1,6 @@
 import express from 'express';
 import { config } from './src/config/index.js';
 import { router as routes } from './src/routes/index.js';
-import { setupWebSocket } from './src/websocket/wsServer.js';
 
 const app = express();
 
@@ -9,9 +8,6 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
-
-// Configurar WebSocket
-setupWebSocket(app);
 
 // Montar rutas
 app.use('/', routes);

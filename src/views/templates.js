@@ -2,8 +2,6 @@ import { renderAccountCard } from './components/accountCard.js';
 import { renderAdminAccountCard } from './components/adminAccountCard.js';
 import { dashboardStyles } from './styles/dashboard.js';
 import { adminDashboardStyles } from './styles/adminDashboard.js';
-import { websocketScript } from './scripts/websocket.js';
-import { adminDashboardScript } from './scripts/adminDashboard.js';
 
 export function renderDashboard(accounts) {
   return `
@@ -13,7 +11,6 @@ export function renderDashboard(accounts) {
       <title>Streaming Accounts Dashboard</title>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
       <style>${dashboardStyles}</style>
-      <script>${websocketScript}</script>
     </head>
     <body>
       <div class="container">
@@ -35,7 +32,6 @@ export function renderAdminDashboard(accounts) {
       <title>Admin Dashboard</title>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
       <style>${adminDashboardStyles}</style>
-      <script>${adminDashboardScript}</script>
     </head>
     <body>
       <div class="container">
