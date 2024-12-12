@@ -1,50 +1,72 @@
 import expressWs from 'express-ws';
 import * as accountService from '../services/accountService.js';
-import { EventEmitter } from 'events';
-
-// Crear un emisor de eventos para las actualizaciones de WebSocket
-const wsEvents = new EventEmitter();
+import { accountEvents } from '../services/accountService.js';
 
 export function setupWebSocket(app) {
   const wsInstance = expressWs(app);
+  const wss = wsInstance.getWss();
   
-  app.ws('/updates', function(ws, req) {
-    const sendUpdate = async () => {
-      try {
-        const { accounts } = await accountService.getAccounts();
-        ws.send(JSON.stringify({ 
-          type: 'accountsUpdate', 
-          accounts 
-        }));
-      } catch (error) {
-        console.error('Error sending update:', error);
+  // Función para enviar actualizaciones a todos los clientes
+  const broadcastUpdate = async () => {
+    const { accounts } = await accountService.getAccounts();
+    const data = JSON.stringify({ 
+      type: 'accountsUpdate', 
+      accounts 
+    });
+
+    wss.clients.forEach(client => {
+      if (client.readyState === client.OPEN) {
+        try {
+          client.send(data);
+        } catch (err) {
+          console.error('Error sending to client:', err);
+        }
       }
-    };
+    });
+  };
+
+  app.ws('/updates', function(ws, req) {
+    // Configurar ping/pong para mantener la conexión viva
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
+
+    // Enviar estado inicial
+    accountService.getAccounts().then(({ accounts }) => {
+      ws.send(JSON.stringify({ 
+        type: 'accountsUpdate', 
+        accounts 
+      }));
+    }).catch(err => {
+      console.error('Error sending initial state:', err);
+    });
 
     // Suscribirse a eventos de actualización
-    accountEvents.on('accountsUpdated', sendUpdate);
-    
-    // Enviar estado inicial
-    sendUpdate();
+    accountEvents.on('accountsUpdated', broadcastUpdate);
 
-    // Mantener viva la conexión
-    const pingInterval = setInterval(() => {
-      if (ws.readyState === ws.OPEN) {
-        ws.ping();
-      }
-    }, 30000);
-
-    // Limpiar al desconectar
-    ws.on('close', () => {
-      clearInterval(pingInterval);
-      accountEvents.removeListener('accountsUpdated', sendUpdate);
-    });
-
-    // Manejar errores
+    // Manejar errores y cierre
     ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
-      clearInterval(pingInterval);
+      console.error('WebSocket client error:', error);
     });
+
+    ws.on('close', () => {
+      accountEvents.removeListener('accountsUpdated', broadcastUpdate);
+    });
+  });
+
+  // Configurar intervalo de ping para todas las conexiones
+  const pingInterval = setInterval(() => {
+    wss.clients.forEach(ws => {
+      if (ws.isAlive === false) {
+        return ws.terminate();
+      }
+      ws.isAlive = false;
+      ws.ping();
+    });
+  }, 30000);
+
+  // Limpiar intervalo cuando el servidor se cierre
+  wss.on('close', () => {
+    clearInterval(pingInterval);
   });
 
   return wsInstance;

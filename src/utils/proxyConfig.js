@@ -12,13 +12,30 @@ export function createProxyConfig(account, req, targetDomain) {
     cookieDomainRewrite: {
       '*': req.get('host')
     },
+    // Añadir configuración específica para WebSocket
+    wsOptions: {
+      maxPayload: 64 * 1024 * 1024, // 64MB
+      pingTimeout: 60000,
+      pingInterval: 25000
+    },
+    onProxyReqWs: (proxyReq, req, socket) => {
+      // Manejar errores de socket
+      socket.on('error', (err) => {
+        console.log('WebSocket socket error:', err);
+      });
+    },
+    onError: (err, req, res) => {
+      console.log('Proxy error:', err);
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('Proxy error');
+      }
+    },
     pathRewrite: (path) => {
-      // Mantener la URL original si está en el nuevo formato
       if (path.includes('http://') || path.includes('https://')) {
         const matches = path.match(/\/stream\/[^/]+\/(.+)/);
         return matches ? `/${matches[1]}` : path;
       }
-      // Formato actual
       return path.startsWith(accountPath) 
         ? path.slice(accountPath.length) || '/'
         : path;
