@@ -2,11 +2,12 @@ import express from 'express';
 import { adminAuth } from '../middleware/auth.js';
 import * as accountService from '../services/accountService.js';
 import { renderDashboard, renderAdminDashboard } from '../views/templates.js';
-import proxyRoutes from './proxy.js';
+import { proxyRouter } from './proxy.js';
 
 const router = express.Router();
 
-router.use(proxyRoutes);
+// Mount proxy routes
+router.use(proxyRouter);
 
 router.get('/dashboard', async (req, res) => {
   const { accounts } = await accountService.getAccounts();
@@ -55,4 +56,4 @@ router.post('/admin/accounts/:name/toggle', adminAuth, async (req, res) => {
   res.redirect('/admin');
 });
 
-export default router;
+export { router };

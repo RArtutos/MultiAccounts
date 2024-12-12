@@ -4,25 +4,34 @@ import * as accountService from '../services/accountService.js';
 
 const router = express.Router();
 
-// Proxy route for streaming services
-router.get('/stream/:platform/*', async (req, res, next) => {
+// Proxy route for streaming services with account name
+router.all('/stream/:accountName/*', async (req, res, next) => {
   try {
-    const { platform } = req.params;
+    const { accountName } = req.params;
     const { accounts } = await accountService.getAccounts();
     
-    // Verify if platform exists in our accounts
-    const validPlatform = accounts.some(acc => acc.url.includes(platform));
+    // Find the specific account
+    const account = accounts.find(acc => acc.name === decodeURIComponent(accountName));
     
-    if (!validPlatform) {
-      return res.status(404).send('Platform not supported');
+    if (!account) {
+      return res.status(404).send('Account not found');
+    }
+    
+    if (account.status !== 'Available') {
+      return res.status(403).send('Account is currently in use');
     }
 
+    // Add account to request for proxy middleware
+    req.streamingAccount = account;
+    
     // Handle the proxy request
     return createStreamingProxy(req, res, next);
   } catch (error) {
     console.error('Streaming error:', error);
-    res.status(500).send('Error accessing streaming service');
+    if (!res.headersSent) {
+      res.status(500).send('Error accessing streaming service');
+    }
   }
 });
 
-export default router;
+export { router as proxyRouter };
