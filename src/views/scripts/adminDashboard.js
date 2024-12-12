@@ -67,22 +67,26 @@ export const adminDashboardScript = `
     }
   }
 
-  // Función para expulsar a un usuario
-  async function kickUser(accountName, userId) {
+  // Función para actualizar el máximo de usuarios
+  async function updateMaxUsers(accountName, maxUsers) {
     try {
-      const response = await fetch(\`/admin/accounts/\${encodeURIComponent(accountName)}/users/\${encodeURIComponent(userId)}\`, {
-        method: 'DELETE'
+      const response = await fetch(\`/admin/accounts/\${encodeURIComponent(accountName)}/max-users\`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ maxUsers: parseInt(maxUsers, 10) })
       });
       
-      if (!response.ok) throw new Error('Error expulsando usuario');
+      if (!response.ok) throw new Error('Error actualizando máximo de usuarios');
       
       const data = await response.json();
       if (data.success) {
-        showNotification('Usuario expulsado correctamente', 'success');
+        showNotification('Máximo de usuarios actualizado correctamente', 'success');
       }
     } catch (error) {
       console.error('Error:', error);
-      showNotification('Error al expulsar al usuario', 'error');
+      showNotification('Error al actualizar el máximo de usuarios', 'error');
     }
   }
 
@@ -92,7 +96,6 @@ export const adminDashboardScript = `
     notification.className = \`notification \${type}\`;
     notification.textContent = message;
     
-    // Añadir estilos si no existen
     if (!document.getElementById('notification-styles')) {
       const style = document.createElement('style');
       style.id = 'notification-styles';
@@ -140,12 +143,7 @@ export const adminDashboardScript = `
     const accountsGrid = document.querySelector('.accounts-grid');
     if (!accountsGrid) return;
     
-    const currentContent = accountsGrid.innerHTML;
-    const newContent = accounts.map(account => renderAdminAccountCard(account)).join('');
-    
-    if (currentContent !== newContent) {
-      accountsGrid.innerHTML = newContent;
-    }
+    accountsGrid.innerHTML = accounts.map(account => renderAdminAccountCard(account)).join('');
   }
 
   // Iniciar conexión WebSocket cuando el documento esté listo

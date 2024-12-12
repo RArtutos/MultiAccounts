@@ -1,7 +1,6 @@
-import { CompressionTransform } from './compression.js';
 import { rewriteUrls } from './urlRewriter.js';
 import { Transform } from 'stream';
-import { isInternalUrl } from './urlUtils.js';
+import zlib from 'zlib';
 
 class HtmlTransform extends Transform {
   constructor(account, targetDomain, req) {
@@ -39,7 +38,7 @@ export function handleProxyResponse(proxyRes, req, res, account, targetDomain) {
     if (location.startsWith('http')) {
       try {
         const locationUrl = new URL(location);
-        if (isInternalUrl(location, targetDomain)) {
+        if (locationUrl.hostname === targetDomain || locationUrl.hostname.endsWith(`.${targetDomain}`)) {
           const path = locationUrl.pathname + locationUrl.search + locationUrl.hash;
           proxyRes.headers.location = `${accountPrefix}${path}`;
         }
@@ -53,27 +52,51 @@ export function handleProxyResponse(proxyRes, req, res, account, targetDomain) {
     }
   }
 
-  // Copiar headers relevantes
+  // Copiar headers relevantes excepto los de compresión
   Object.keys(proxyRes.headers).forEach(key => {
-    if (!['content-encoding', 'content-length'].includes(key.toLowerCase())) {
+    const lowerKey = key.toLowerCase();
+    if (!['content-encoding', 'content-length', 'content-security-policy'].includes(lowerKey)) {
       res.setHeader(key, proxyRes.headers[key]);
     }
   });
 
   const contentType = proxyRes.headers['content-type'];
+  const contentEncoding = proxyRes.headers['content-encoding']?.toLowerCase();
   const isHtml = contentType?.includes('text/html');
+  const isJs = contentType?.includes('javascript');
+  const isCss = contentType?.includes('text/css');
+  const needsTransform = isHtml || isJs || isCss;
 
   let pipeline = proxyRes;
 
-  if (proxyRes.headers['content-encoding'] === 'gzip') {
-    pipeline = pipeline.pipe(new CompressionTransform());
-    res.setHeader('content-encoding', 'gzip');
+  // Manejar la descompresión si es necesario
+  if (contentEncoding === 'gzip') {
+    pipeline = pipeline.pipe(zlib.createGunzip());
+  } else if (contentEncoding === 'deflate') {
+    pipeline = pipeline.pipe(zlib.createInflate());
+  } else if (contentEncoding === 'br') {
+    pipeline = pipeline.pipe(zlib.createBrotliDecompress());
   }
 
-  if (isHtml) {
+  // Aplicar transformaciones si es necesario
+  if (needsTransform) {
     pipeline = pipeline.pipe(new HtmlTransform(account, targetDomain, req));
   }
 
+  // Comprimir la respuesta si el cliente lo acepta
+  const acceptEncoding = req.headers['accept-encoding'] || '';
+  if (acceptEncoding.includes('gzip')) {
+    res.setHeader('Content-Encoding', 'gzip');
+    pipeline = pipeline.pipe(zlib.createGzip());
+  } else if (acceptEncoding.includes('deflate')) {
+    res.setHeader('Content-Encoding', 'deflate');
+    pipeline = pipeline.pipe(zlib.createDeflate());
+  } else if (acceptEncoding.includes('br')) {
+    res.setHeader('Content-Encoding', 'br');
+    pipeline = pipeline.pipe(zlib.createBrotliCompress());
+  }
+
+  // Manejar errores en la pipeline
   pipeline.on('error', (error) => {
     console.error('Error en la pipeline de proxy:', error);
     if (!res.headersSent) {
@@ -81,5 +104,6 @@ export function handleProxyResponse(proxyRes, req, res, account, targetDomain) {
     }
   });
 
+  // Enviar la respuesta
   pipeline.pipe(res);
 }

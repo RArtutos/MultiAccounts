@@ -1,5 +1,4 @@
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import { createProxyConfig } from '../utils/proxyConfig.js';
 import { handleProxyResponse } from '../utils/proxyResponse.js';
 import { getServiceDomain } from '../utils/urlUtils.js';
 import dns from 'dns';
@@ -19,15 +18,13 @@ export async function createStreamingProxy(req, res, next) {
     // Verificar que el dominio es alcanzable antes de crear el proxy
     await lookup(targetDomain);
     
-    const proxyConfig = createProxyConfig(account, req, targetDomain);
-    
     const proxy = createProxyMiddleware({
-      ...proxyConfig,
       target: account.url,
       changeOrigin: true,
       secure: true,
-      ws: true,
       followRedirects: true,
+      ws: false,
+      selfHandleResponse: true, // Importante: manejar la respuesta nosotros mismos
       pathRewrite: {
         [`^/stream/${encodeURIComponent(account.name)}`]: '',
       },

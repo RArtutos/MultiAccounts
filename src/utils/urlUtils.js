@@ -16,16 +16,16 @@ export function isInternalUrl(url, targetDomain) {
     const urlObj = new URL(urlToCheck);
     const hostname = urlObj.hostname;
     
+    // Comparación más estricta de dominios
     return hostname === targetDomain || 
            hostname.endsWith(`.${targetDomain}`) || 
-           targetDomain.endsWith(`.${hostname}`) ||
-           hostname.includes(targetDomain.split('.')[0]);
+           targetDomain.endsWith(`.${hostname}`);
   } catch {
     return !url.includes('://');
   }
 }
 
-export function normalizeUrl(url, targetDomain) {
+export function normalizeUrl(url) {
   try {
     const urlObj = new URL(url.startsWith('//') ? `https:${url}` : url);
     return urlObj.pathname + urlObj.search + urlObj.hash;
