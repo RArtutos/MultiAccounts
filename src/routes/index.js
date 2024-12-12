@@ -6,22 +6,30 @@ import { proxyRouter } from './proxy.js';
 
 const router = express.Router();
 
-// Mount proxy routes
+// Montar rutas del proxy
 router.use(proxyRouter);
 
+// Rutas del dashboard
 router.get('/dashboard', async (req, res) => {
   const { accounts } = await accountService.getAccounts();
   res.send(renderDashboard(accounts));
 });
 
+// Rutas de administración
 router.get('/admin', adminAuth, async (req, res) => {
   const { accounts } = await accountService.getAccounts();
   res.send(renderAdminDashboard(accounts));
 });
 
 router.post('/admin/accounts', adminAuth, async (req, res) => {
-  const { name, url } = req.body;
-  await accountService.addAccount(name, url);
+  const { name, url, maxUsers } = req.body;
+  await accountService.addAccount(name, url, maxUsers);
+  res.redirect('/admin');
+});
+
+router.post('/admin/accounts/:name/max-users', adminAuth, async (req, res) => {
+  const { maxUsers } = req.body;
+  await accountService.updateAccountMaxUsers(decodeURIComponent(req.params.name), maxUsers);
   res.redirect('/admin');
 });
 
