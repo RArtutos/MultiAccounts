@@ -13,8 +13,17 @@ export async function createStreamingProxy(req, res, next) {
 
   const proxyConfig = createProxyConfig(account, req, targetDomain);
   
+  // Crear y configurar el proxy
   const proxy = createProxyMiddleware({
     ...proxyConfig,
+    target: account.url,
+    changeOrigin: true,
+    secure: true,
+    ws: true,
+    followRedirects: true,
+    pathRewrite: {
+      [`^/stream/${encodeURIComponent(account.name)}`]: '',
+    },
     onProxyRes: (proxyRes, req, res) => handleProxyResponse(proxyRes, req, res, account, targetDomain),
     onError: (err, req, res) => {
       console.error('Error de proxy:', err);

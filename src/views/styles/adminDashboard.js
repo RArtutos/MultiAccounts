@@ -3,101 +3,58 @@ import { commonStyles } from './common.js';
 export const adminDashboardStyles = `
   ${commonStyles}
   
-  .form-container {
+  .admin-account {
     background-color: var(--card-bg);
     border-radius: 1rem;
-    padding: 2rem;
-    margin-bottom: 2rem;
-  }
-  
-  .form-group {
-    margin-bottom: 1rem;
-  }
-  
-  label {
-    display: block;
-    margin-bottom: 0.5rem;
-    color: var(--text-secondary);
-  }
-  
-  input {
-    width: 100%;
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    border: 1px solid #4b5563;
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
-    margin-top: 0.25rem;
-  }
-  
-  button {
-    background-color: var(--accent);
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.5rem;
-    border: none;
-    cursor: pointer;
-    font-weight: 500;
-    transition: background-color 0.2s ease;
-  }
-  
-  button:hover {
-    background-color: #2563eb;
-  }
-  
-  .danger {
-    background-color: var(--error);
-  }
-  
-  .danger:hover {
-    background-color: #dc2626;
-  }
-  
-  .stats-panel {
-    background-color: var(--bg-primary);
-    border-radius: 0.5rem;
     padding: 1.5rem;
-    margin: 1rem 0;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
   }
-  
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
+
+  .account-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
     gap: 1rem;
-    margin-top: 1rem;
   }
-  
-  .stat-item {
-    background-color: var(--card-bg);
+
+  .account-title {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .account-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .account-details {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .cookie-manager {
+    background-color: var(--bg-primary);
     padding: 1rem;
     border-radius: 0.5rem;
+    overflow: hidden;
   }
-  
-  .stat-label {
-    display: block;
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  .stat-value {
-    display: block;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-  
+
   .cookie-form {
-    background-color: var(--bg-primary);
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    margin-top: 1rem;
+    margin-bottom: 1rem;
   }
-  
-  .cookie-list {
-    margin-top: 1rem;
+
+  .cookie-form .form-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    align-items: end;
   }
-  
+
   .cookie-item {
     display: flex;
     justify-content: space-between;
@@ -106,49 +63,82 @@ export const adminDashboardStyles = `
     background-color: var(--card-bg);
     border-radius: 0.5rem;
     margin: 0.5rem 0;
-  }
-  
-  .button-group {
-    display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
-    margin-top: 1rem;
+    word-break: break-all;
   }
 
-  /* Estilos compartidos con el dashboard */
-  .account {
-    background-color: var(--card-bg);
-    border-radius: 1rem;
-    padding: 1.5rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    transition: transform 0.2s ease;
+  .cookie-info {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
   }
-  
-  .account:hover {
-    transform: translateY(-4px);
-  }
-  
-  .account h3 {
-    font-size: 1.25rem;
-    margin: 0 0 1rem 0;
-    color: var(--text-primary);
-  }
-  
-  .status-badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.875rem;
+
+  .cookie-name {
     font-weight: 500;
-    margin-bottom: 1rem;
+    min-width: 100px;
   }
-  
-  .status-available {
-    background-color: rgba(34, 197, 94, 0.1);
-    color: var(--success);
+
+  .cookie-value {
+    color: var(--text-secondary);
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: break-word;
   }
-  
-  .status-in-use {
-    background-color: rgba(239, 68, 68, 0.1);
-    color: var(--error);
+
+  .cookies-list {
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
   }
+
+  .cookies-list::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .cookies-list::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+    border-radius: 4px;
+  }
+
+  .cookies-list::-webkit-scrollbar-thumb {
+    background: var(--text-secondary);
+    border-radius: 4px;
+  }
+
+  @media (max-width: 768px) {
+    .cookie-form .form-group {
+      grid-template-columns: 1fr;
+    }
+
+    .cookie-item {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .cookie-info {
+      width: 100%;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .account-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .account-title {
+      width: 100%;
+    }
+
+    .account-actions {
+      width: 100%;
+      justify-content: flex-end;
+    }
+  }
+
+  /* Resto de los estilos sin cambios */
+  ${commonStyles}
 `;
