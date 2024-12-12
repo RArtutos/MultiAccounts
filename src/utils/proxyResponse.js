@@ -35,20 +35,25 @@ export function handleProxyResponse(proxyRes, req, res, account, targetDomain) {
     const location = proxyRes.headers.location;
     const accountPrefix = `/stream/${encodeURIComponent(account.name)}`;
     
-    if (location.startsWith('http')) {
-      try {
-        const locationUrl = new URL(location);
+    try {
+      // Verificar si es una URL absoluta
+      const isAbsoluteUrl = location.startsWith('http') || location.startsWith('//');
+      
+      if (isAbsoluteUrl) {
+        const locationUrl = new URL(location.startsWith('//') ? `https:${location}` : location);
         if (locationUrl.hostname === targetDomain || locationUrl.hostname.endsWith(`.${targetDomain}`)) {
           const path = locationUrl.pathname + locationUrl.search + locationUrl.hash;
           proxyRes.headers.location = `${accountPrefix}${path}`;
         }
-      } catch (error) {
-        console.error('Error handling redirect:', error);
+      } else {
+        // Para URLs relativas, asegurarnos de no duplicar el prefijo
+        const cleanPath = location.startsWith('/') ? location : `/${location}`;
+        if (!cleanPath.startsWith(accountPrefix)) {
+          proxyRes.headers.location = `${accountPrefix}${cleanPath}`;
+        }
       }
-    } else {
-      // Para URLs relativas o absolutas sin protocolo
-      const cleanPath = location.replace(/^\/+/, '');
-      proxyRes.headers.location = `${accountPrefix}/${cleanPath}`;
+    } catch (error) {
+      console.error('Error handling redirect:', error);
     }
   }
 
@@ -65,7 +70,9 @@ export function handleProxyResponse(proxyRes, req, res, account, targetDomain) {
   const isHtml = contentType?.includes('text/html');
   const isJs = contentType?.includes('javascript');
   const isCss = contentType?.includes('text/css');
-  const needsTransform = isHtml || isJs || isCss;
+  
+  // Solo transformar HTML y JavaScript, no CSS ni otros recursos
+  const needsTransform = isHtml || isJs;
 
   let pipeline = proxyRes;
 
@@ -78,7 +85,7 @@ export function handleProxyResponse(proxyRes, req, res, account, targetDomain) {
     pipeline = pipeline.pipe(zlib.createBrotliDecompress());
   }
 
-  // Aplicar transformaciones si es necesario
+  // Aplicar transformaciones solo si es necesario
   if (needsTransform) {
     pipeline = pipeline.pipe(new HtmlTransform(account, targetDomain, req));
   }

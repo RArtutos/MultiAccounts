@@ -8,6 +8,11 @@ export function rewriteUrls(content, account, targetDomain, req) {
   function rewriteUrl(url) {
     if (!url) return url;
 
+    // No reescribir URLs de recursos estáticos comunes
+    if (url.match(/\.(jpg|jpeg|png|gif|svg|webp|css|js|woff2?|ttf|eot)(\?.*)?$/i)) {
+      return url;
+    }
+
     // Si ya tiene nuestro prefijo, no la modificamos
     if (url.startsWith(accountPrefix)) {
       return url;
@@ -25,22 +30,29 @@ export function rewriteUrls(content, account, targetDomain, req) {
 
       // Si es una URL interna, la reescribimos
       if (isInternalUrl(absoluteUrl, targetDomain)) {
-        return `${accountPrefix}${urlObj.pathname}${urlObj.search}${urlObj.hash}`;
+        const path = urlObj.pathname + urlObj.search + urlObj.hash;
+        return `${accountPrefix}${path}`;
       }
 
       return url;
     } catch (error) {
-      console.error('Error transforming URL:', error, url);
+      console.error('Error transforming URL:', error);
       return url;
     }
   }
 
   let modifiedContent = content;
 
-  // Reescribir URLs en atributos HTML
+  // Reescribir URLs en atributos HTML (excluyendo recursos estáticos)
   modifiedContent = modifiedContent.replace(
     /(href|src|action|data-src|poster)=["']([^"']+)["']/gi,
-    (match, attr, url) => `${attr}="${rewriteUrl(url)}"`
+    (match, attr, url) => {
+      // No reescribir URLs de recursos estáticos
+      if (url.match(/\.(jpg|jpeg|png|gif|svg|webp|css|js|woff2?|ttf|eot)(\?.*)?$/i)) {
+        return match;
+      }
+      return `${attr}="${rewriteUrl(url)}"`;
+    }
   );
 
   // Reescribir URLs en meta refresh
@@ -49,13 +61,7 @@ export function rewriteUrls(content, account, targetDomain, req) {
     (match, prefix, url) => `content="${prefix}${rewriteUrl(url)}"`
   );
 
-  // Reescribir URLs en CSS
-  modifiedContent = modifiedContent.replace(
-    /url\(['"]?([^'"\)]+)['"]?\)/gi,
-    (match, url) => `url("${rewriteUrl(url)}")`
-  );
-
-  // Reescribir URLs en JavaScript
+  // Reescribir URLs en JavaScript (evitando recursos estáticos)
   const jsPatterns = [
     // Redirecciones directas
     /(window\.location|location|window\.location\.href|location\.href)\s*=\s*["']([^"']+)["']/gi,
@@ -67,6 +73,10 @@ export function rewriteUrls(content, account, targetDomain, req) {
 
   jsPatterns.forEach(pattern => {
     modifiedContent = modifiedContent.replace(pattern, (match, func, url) => {
+      // No reescribir URLs de recursos estáticos
+      if (url.match(/\.(jpg|jpeg|png|gif|svg|webp|css|js|woff2?|ttf|eot)(\?.*)?$/i)) {
+        return match;
+      }
       return `${func}"${rewriteUrl(url)}"`;
     });
   });
