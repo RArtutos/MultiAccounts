@@ -1,45 +1,151 @@
+import { isInternalUrl, normalizeUrl } from './urlUtils.js';
+
 export function rewriteUrls(html, account, targetDomain) {
-  const urlAttributes = ['href', 'src', 'action', 'data-url', 'content'];
   const accountPrefix = `/stream/${encodeURIComponent(account.name)}`;
   
-  // Replace absolute URLs
-  urlAttributes.forEach(attr => {
-    const regex = new RegExp(`${attr}=["'](https?:\/\/${targetDomain}[^"']*?)["']`, 'gi');
-    html = html.replace(regex, `${attr}="${accountPrefix}$1"`);
+  // Lista de atributos que pueden contener URLs
+  const urlAttributes = [
+    'href',
+    'src',
+    'action',
+    'data-url',
+    'content',
+    'data-src',
+    'data-href',
+    'poster',
+    'formaction'
+  ];
+
+  let modifiedHtml = html;
+
+  // Reemplazar URLs absolutas que usan el dominio del proxy
+  const proxyUrlRegex = new RegExp(`https?:\/\/${req.get('host')}\/([^"'\\s>]*)`, 'gi');
+  modifiedHtml = modifiedHtml.replace(proxyUrlRegex, (match, path) => {
+    return `${accountPrefix}/${path}`;
   });
 
-  // Replace relative URLs
+  // Reescribir URLs absolutas
+  urlAttributes.forEach(attr => {
+    const regex = new RegExp(`${attr}=["'](https?:\/\/[^"']*?)["']`, 'gi');
+    modifiedHtml = modifiedHtml.replace(regex, (match, url) => {
+      if (isInternalUrl(url, targetDomain)) {
+        const normalizedUrl = normalizeUrl(url, targetDomain);
+        const path = normalizedUrl.replace(/^https?:\/\/[^\/]+/, '');
+        return `${attr}="${accountPrefix}${path}"`;
+      }
+      return match;
+    });
+  });
+
+  // Reescribir URLs relativas
   urlAttributes.forEach(attr => {
     const relativeRegex = new RegExp(`${attr}=["'](\/?[^"'http][^"']*?)["']`, 'gi');
-    html = html.replace(relativeRegex, (match, url) => {
-      if (url.startsWith('//')) return match;
+    modifiedHtml = modifiedHtml.replace(relativeRegex, (match, url) => {
+      if (url.startsWith('//')) {
+        if (isInternalUrl(url, targetDomain)) {
+          return `${attr}="${accountPrefix}${url.replace(/^\/\/[^\/]+/, '')}"`;
+        }
+        return match;
+      }
       return `${attr}="${accountPrefix}/${url.replace(/^\//, '')}"`;
     });
   });
 
-  // Replace meta refresh URLs
-  html = html.replace(
+  // Reescribir URLs en scripts
+  const scriptPatterns = [
+    // window.location y variantes
+    {
+      regex: /(?:window\.location|location)(?:\.href|\.pathname)?\s*=\s*["'](https?:\/\/[^"']*|\/[^"']*)["']/gi,
+      handler: (match, url) => {
+        if (isInternalUrl(url, targetDomain)) {
+          const normalizedUrl = normalizeUrl(url, targetDomain);
+          const path = normalizedUrl.replace(/^https?:\/\/[^\/]+/, '');
+          return match.replace(url, `${accountPrefix}${path}`);
+        }
+        return match;
+      }
+    },
+    // window.open y similares
+    {
+      regex: /(?:window\.open|location\.replace)\(["'](https?:\/\/[^"']*|\/[^"']*)["']/gi,
+      handler: (match, url) => {
+        if (isInternalUrl(url, targetDomain)) {
+          const normalizedUrl = normalizeUrl(url, targetDomain);
+          const path = normalizedUrl.replace(/^https?:\/\/[^\/]+/, '');
+          return match.replace(url, `${accountPrefix}${path}`);
+        }
+        return match;
+      }
+    },
+    // fetch/axios/XMLHttpRequest
+    {
+      regex: /(?:fetch|axios|\.open\(['"](?:GET|POST|PUT|DELETE)["'],\s*)["'](https?:\/\/[^"']*|\/[^"']*)["']/gi,
+      handler: (match, url) => {
+        if (isInternalUrl(url, targetDomain)) {
+          const normalizedUrl = normalizeUrl(url, targetDomain);
+          const path = normalizedUrl.replace(/^https?:\/\/[^\/]+/, '');
+          return match.replace(url, `${accountPrefix}${path}`);
+        }
+        return match;
+      }
+    },
+    // URLs en strings de JavaScript
+    {
+      regex: /["'](https?:\/\/[^"']*|\/[^"']*)["']/g,
+      handler: (match, url) => {
+        if (isInternalUrl(url, targetDomain)) {
+          const normalizedUrl = normalizeUrl(url, targetDomain);
+          const path = normalizedUrl.replace(/^https?:\/\/[^\/]+/, '');
+          return match.replace(url, `${accountPrefix}${path}`);
+        }
+        return match;
+      }
+    }
+  ];
+
+  // Aplicar patrones de script
+  scriptPatterns.forEach(({ regex, handler }) => {
+    modifiedHtml = modifiedHtml.replace(regex, handler);
+  });
+
+  // Reescribir meta refresh
+  modifiedHtml = modifiedHtml.replace(
     /content=["'](\d*;\s*URL=)(https?:\/\/[^"']*|\/[^"']*)["']/gi,
     (match, prefix, url) => {
-      if (url.includes(targetDomain) || url.startsWith('/')) {
-        const newUrl = url.replace(/^https?:\/\/[^\/]+/, '').replace(/^\//, '');
-        return `content="${prefix}${accountPrefix}/${newUrl}"`;
+      if (isInternalUrl(url, targetDomain)) {
+        const normalizedUrl = normalizeUrl(url, targetDomain);
+        const path = normalizedUrl.replace(/^https?:\/\/[^\/]+/, '');
+        return `content="${prefix}${accountPrefix}${path}"`;
       }
       return match;
     }
   );
 
-  // Replace JavaScript URLs
-  html = html.replace(
-    /window\.location\.href\s*=\s*["'](https?:\/\/[^"']*|\/[^"']*)["']/gi,
+  // Reescribir URLs en estilos inline
+  modifiedHtml = modifiedHtml.replace(
+    /url\(['"]?(https?:\/\/[^'")\s]+|\/[^'")\s]+)['"]?\)/gi,
     (match, url) => {
-      if (url.includes(targetDomain) || url.startsWith('/')) {
-        const newUrl = url.replace(/^https?:\/\/[^\/]+/, '').replace(/^\//, '');
-        return `window.location.href="${accountPrefix}/${newUrl}"`;
+      if (isInternalUrl(url, targetDomain)) {
+        const normalizedUrl = normalizeUrl(url, targetDomain);
+        const path = normalizedUrl.replace(/^https?:\/\/[^\/]+/, '');
+        return `url("${accountPrefix}${path}")`;
       }
       return match;
     }
   );
 
-  return html;
+  // Reescribir URLs en atributos data-* dinámicos
+  modifiedHtml = modifiedHtml.replace(
+    /data-[a-zA-Z0-9-]+=["'](https?:\/\/[^"']*|\/[^"']*)["']/gi,
+    (match, url) => {
+      if (isInternalUrl(url, targetDomain)) {
+        const normalizedUrl = normalizeUrl(url, targetDomain);
+        const path = normalizedUrl.replace(/^https?:\/\/[^\/]+/, '');
+        return match.replace(url, `${accountPrefix}${path}`);
+      }
+      return match;
+    }
+  );
+
+  return modifiedHtml;
 }

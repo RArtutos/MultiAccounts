@@ -10,10 +10,26 @@ export function getServiceDomain(url) {
 
 export function isInternalUrl(url, targetDomain) {
   try {
-    const urlObj = new URL(url.startsWith('//') ? `https:${url}` : url);
-    return urlObj.hostname === targetDomain || urlObj.hostname.endsWith(`.${targetDomain}`);
+    // Manejar URLs relativas
+    if (url.startsWith('/')) return true;
+    
+    // Manejar URLs con protocolo relativo
+    if (url.startsWith('//')) {
+      url = `https:${url}`;
+    }
+    
+    const urlObj = new URL(url.startsWith('http') ? url : `https://${url}`);
+    const hostname = urlObj.hostname;
+    
+    // Comprobar si la URL es del dominio objetivo o sus subdominios
+    return hostname === targetDomain || 
+           hostname.endsWith(`.${targetDomain}`) || 
+           targetDomain.endsWith(`.${hostname}`) ||
+           // Comprobar dominios alternativos (por ejemplo, para Netflix)
+           hostname.includes(targetDomain.split('.')[0]);
   } catch {
-    return url.startsWith('/');
+    // Si no se puede parsear la URL, asumimos que es relativa
+    return !url.includes('://');
   }
 }
 

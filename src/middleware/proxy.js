@@ -6,16 +6,20 @@ import { getServiceDomain } from '../utils/urlUtils.js';
 export async function createStreamingProxy(req, res, next) {
   const account = req.streamingAccount;
   const targetDomain = getServiceDomain(account.url);
+  
+  if (!targetDomain) {
+    return res.status(400).send('URL inválida');
+  }
+
   const proxyConfig = createProxyConfig(account, req, targetDomain);
   
-  // Create proxy middleware
   const proxy = createProxyMiddleware({
     ...proxyConfig,
     onProxyRes: (proxyRes, req, res) => handleProxyResponse(proxyRes, req, res, account, targetDomain),
     onError: (err, req, res) => {
-      console.error('Proxy error:', err);
+      console.error('Error de proxy:', err);
       if (!res.headersSent) {
-        res.status(500).send('Proxy error occurred');
+        res.status(500).send('Error en el proxy');
       }
     }
   });

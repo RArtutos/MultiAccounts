@@ -1,35 +1,46 @@
 import express from 'express';
 import { createStreamingProxy } from '../middleware/proxy.js';
 import * as accountService from '../services/accountService.js';
+import { getServiceDomain } from '../utils/urlUtils.js';
 
 const router = express.Router();
 
-// Proxy route for streaming services with account name
-router.all('/stream/:accountName/*', async (req, res, next) => {
+// Manejar tanto el formato actual como el nuevo formato de URLs
+router.all([
+  '/stream/:accountName/*',
+  '/stream/:accountName/*/https://*',
+  '/stream/:accountName/*/http://*'
+], async (req, res, next) => {
   try {
     const { accountName } = req.params;
     const { accounts } = await accountService.getAccounts();
     
-    // Find the specific account
     const account = accounts.find(acc => acc.name === decodeURIComponent(accountName));
     
     if (!account) {
-      return res.status(404).send('Account not found');
+      return res.status(404).send('Cuenta no encontrada');
     }
     
     if (account.status !== 'Available') {
-      return res.status(403).send('Account is currently in use');
+      return res.status(403).send('La cuenta está actualmente en uso');
     }
 
-    // Add account to request for proxy middleware
+    // Extraer la URL original si está en el nuevo formato
+    const path = req.path;
+    const matches = path.match(/\/stream\/[^/]+\/(.+)/);
+    if (matches) {
+      const originalPath = matches[1];
+      if (originalPath.startsWith('http://') || originalPath.startsWith('https://')) {
+        account.url = originalPath;
+      }
+    }
+
     req.streamingAccount = account;
-    
-    // Handle the proxy request
     return createStreamingProxy(req, res, next);
   } catch (error) {
-    console.error('Streaming error:', error);
+    console.error('Error de streaming:', error);
     if (!res.headersSent) {
-      res.status(500).send('Error accessing streaming service');
+      res.status(500).send('Error accediendo al servicio de streaming');
     }
   }
 });
