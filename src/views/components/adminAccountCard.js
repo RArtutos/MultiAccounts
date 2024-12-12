@@ -1,20 +1,31 @@
 export function renderAdminAccountCard(account) {
-  const usersCount = account.currentUsers.length;
+  // Validación de seguridad para evitar errores si account es undefined
+  if (!account) {
+    return '<div class="account">Error: Cuenta no válida</div>';
+  }
+
+  const currentUsers = Array.isArray(account.currentUsers) ? account.currentUsers : [];
+  const usersCount = currentUsers.length;
+  const stats = account.stats || {
+    totalAccesses: 0,
+    lastAccess: null,
+    peakConcurrentUsers: 0
+  };
   
   return `
-    <div class="account ${account.status.toLowerCase().replace(' ', '-')}">
-      <h3>${account.name}</h3>
-      <p>URL: ${account.url}</p>
-      <div class="status-badge status-${account.status.toLowerCase().replace(' ', '-')}">
-        ${account.status}
+    <div class="account ${(account.status || 'unknown').toLowerCase().replace(' ', '-')}">
+      <h3>${account.name || 'Sin nombre'}</h3>
+      <p>URL: ${account.url || 'No definida'}</p>
+      <div class="status-badge status-${(account.status || 'unknown').toLowerCase().replace(' ', '-')}">
+        ${account.status || 'Desconocido'}
       </div>
 
       <div class="usage-section">
         <h4>Configuración de Usuarios</h4>
-        <form action="/admin/accounts/${encodeURIComponent(account.name)}/max-users" method="POST" class="max-users-form">
+        <form action="/admin/accounts/${encodeURIComponent(account.name || '')}/max-users" method="POST" class="max-users-form">
           <div class="form-group">
             <label>Máximo de usuarios simultáneos</label>
-            <input type="number" name="maxUsers" value="${account.maxUsers}" min="1" required>
+            <input type="number" name="maxUsers" value="${account.maxUsers || 1}" min="1" required>
           </div>
           <button type="submit">Actualizar límite</button>
         </form>
@@ -24,19 +35,19 @@ export function renderAdminAccountCard(account) {
           <div class="stats-grid">
             <div class="stat-item">
               <span class="stat-label">Usuarios actuales</span>
-              <span class="stat-value">${usersCount}/${account.maxUsers}</span>
+              <span class="stat-value">${usersCount}/${account.maxUsers || 1}</span>
             </div>
             <div class="stat-item">
               <span class="stat-label">Accesos totales</span>
-              <span class="stat-value">${account.stats.totalAccesses}</span>
+              <span class="stat-value">${stats.totalAccesses}</span>
             </div>
             <div class="stat-item">
               <span class="stat-label">Pico de usuarios</span>
-              <span class="stat-value">${account.stats.peakConcurrentUsers}</span>
+              <span class="stat-value">${stats.peakConcurrentUsers}</span>
             </div>
             <div class="stat-item">
               <span class="stat-label">Último acceso</span>
-              <span class="stat-value">${account.stats.lastAccess ? new Date(account.stats.lastAccess).toLocaleString() : 'Nunca'}</span>
+              <span class="stat-value">${stats.lastAccess ? new Date(stats.lastAccess).toLocaleString() : 'Nunca'}</span>
             </div>
           </div>
         </div>
@@ -44,7 +55,7 @@ export function renderAdminAccountCard(account) {
       
       <div class="cookie-form">
         <h4>Gestionar Cookies</h4>
-        <form action="/admin/accounts/${encodeURIComponent(account.name)}/cookies" method="POST">
+        <form action="/admin/accounts/${encodeURIComponent(account.name || '')}/cookies" method="POST">
           <div class="form-group">
             <label>Nombre Cookie</label>
             <input type="text" name="cookieName" required placeholder="session_id">
@@ -63,7 +74,7 @@ export function renderAdminAccountCard(account) {
               ${Object.entries(account.cookies).map(([name, value]) => `
                 <li class="cookie-item">
                   <span>${name}: ${value}</span>
-                  <form action="/admin/accounts/${encodeURIComponent(account.name)}/cookies/${encodeURIComponent(name)}" 
+                  <form action="/admin/accounts/${encodeURIComponent(account.name || '')}/cookies/${encodeURIComponent(name)}" 
                         method="POST" 
                         style="display: inline">
                     <input type="hidden" name="_method" value="DELETE">
@@ -77,10 +88,10 @@ export function renderAdminAccountCard(account) {
       </div>
 
       <div class="button-group">
-        <form action="/admin/accounts/${encodeURIComponent(account.name)}/toggle" method="POST" style="display: inline">
+        <form action="/admin/accounts/${encodeURIComponent(account.name || '')}/toggle" method="POST" style="display: inline">
           <button type="submit">Cambiar Estado</button>
         </form>
-        <form action="/admin/accounts/${encodeURIComponent(account.name)}" method="POST" style="display: inline">
+        <form action="/admin/accounts/${encodeURIComponent(account.name || '')}" method="POST" style="display: inline">
           <input type="hidden" name="_method" value="DELETE">
           <button type="submit" class="danger">Eliminar Cuenta</button>
         </form>

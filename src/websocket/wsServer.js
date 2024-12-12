@@ -1,16 +1,21 @@
 import expressWs from 'express-ws';
-import { accountEvents } from '../services/accountService.js';
+import * as accountService from '../services/accountService.js';
+import { EventEmitter } from 'events';
+
+// Crear un emisor de eventos para las actualizaciones de WebSocket
+const wsEvents = new EventEmitter();
 
 export function setupWebSocket(app) {
-  // Inicializar WebSocket
   const wsInstance = expressWs(app);
   
-  // Manejar conexiones WebSocket
   app.ws('/updates', function(ws, req) {
     const sendUpdate = async () => {
       try {
         const { accounts } = await accountService.getAccounts();
-        ws.send(JSON.stringify({ type: 'accountsUpdate', accounts }));
+        ws.send(JSON.stringify({ 
+          type: 'accountsUpdate', 
+          accounts 
+        }));
       } catch (error) {
         console.error('Error sending update:', error);
       }
@@ -22,14 +27,23 @@ export function setupWebSocket(app) {
     // Enviar estado inicial
     sendUpdate();
 
+    // Mantener viva la conexión
+    const pingInterval = setInterval(() => {
+      if (ws.readyState === ws.OPEN) {
+        ws.ping();
+      }
+    }, 30000);
+
     // Limpiar al desconectar
     ws.on('close', () => {
+      clearInterval(pingInterval);
       accountEvents.removeListener('accountsUpdated', sendUpdate);
     });
 
     // Manejar errores
     ws.on('error', (error) => {
       console.error('WebSocket error:', error);
+      clearInterval(pingInterval);
     });
   });
 

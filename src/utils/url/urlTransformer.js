@@ -2,10 +2,11 @@ import { isInternalUrl } from './urlValidator.js';
 import { normalizeUrl } from './urlNormalizer.js';
 
 export class UrlTransformer {
-  constructor(account, targetDomain) {
+  constructor(account, targetDomain, baseUrl, accountPrefix) {
     this.account = account;
     this.targetDomain = targetDomain;
-    this.accountPrefix = `/stream/${encodeURIComponent(account.name)}`;
+    this.baseUrl = baseUrl;
+    this.accountPrefix = accountPrefix;
   }
 
   transform(url) {
@@ -16,22 +17,27 @@ export class UrlTransformer {
       return url;
     }
 
-    // Para URLs absolutas que empiezan con /
-    if (url.startsWith('/')) {
-      return `${this.accountPrefix}${url}`;
-    }
+    try {
+      // Convertir URLs relativas a absolutas
+      const absoluteUrl = url.startsWith('http') || url.startsWith('//')
+        ? url
+        : url.startsWith('/')
+          ? `${this.baseUrl}${url}`
+          : `${this.baseUrl}/${url}`;
 
-    // Para URLs con protocolo
-    if (url.startsWith('http') || url.startsWith('//')) {
-      const fullUrl = url.startsWith('//') ? `https:${url}` : url;
-      if (isInternalUrl(fullUrl, this.targetDomain)) {
-        const normalizedPath = normalizeUrl(fullUrl);
-        return `${this.accountPrefix}${normalizedPath}`;
+      const urlObj = new URL(absoluteUrl);
+
+      // Si es una URL interna, la reescribimos
+      if (isInternalUrl(absoluteUrl, this.targetDomain)) {
+        const path = urlObj.pathname + urlObj.search + urlObj.hash;
+        return `${this.accountPrefix}${path}`;
       }
+
+      return url;
+    } catch (error) {
+      console.error('Error transforming URL:', error);
+      // Para URLs que no se pueden parsear, las dejamos como están
       return url;
     }
-
-    // Para URLs relativas
-    return `${this.accountPrefix}/${url}`;
   }
 }
