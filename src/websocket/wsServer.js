@@ -5,6 +5,7 @@ import { accountEvents } from '../services/accountService.js';
 export function setupWebSocket(app) {
   const wsInstance = expressWs(app);
   const wss = wsInstance.getWss();
+  const clients = new Set();
   
   // Función para enviar actualizaciones a los clientes
   const broadcastUpdate = async () => {
@@ -18,20 +19,16 @@ export function setupWebSocket(app) {
         }))
       });
 
-      wss.clients.forEach(client => {
-        if (client.readyState === 1) { // WebSocket.OPEN
-          try {
+      for (const client of clients) {
+        try {
+          if (client.readyState === 1) { // WebSocket.OPEN
             client.send(data);
-          } catch (err) {
-            console.error('Error sending to client:', err);
-            try {
-              client.terminate();
-            } catch (termError) {
-              console.error('Error terminating client:', termError);
-            }
           }
+        } catch (err) {
+          console.error('Error sending to client:', err);
+          clients.delete(client);
         }
-      });
+      }
     } catch (error) {
       console.error('Error broadcasting update:', error);
     }
@@ -39,21 +36,29 @@ export function setupWebSocket(app) {
 
   // Configurar el endpoint WebSocket
   app.ws('/updates', async function(ws, req) {
-    let pingTimeout;
-    
-    const heartbeat = () => {
-      clearTimeout(pingTimeout);
-      pingTimeout = setTimeout(() => {
-        try {
-          ws.terminate();
-        } catch (error) {
-          console.error('Error terminating inactive client:', error);
-        }
-      }, 35000);
+    clients.add(ws);
+    let isAlive = true;
+
+    const ping = () => {
+      if (!isAlive) {
+        clients.delete(ws);
+        return ws.terminate();
+      }
+      isAlive = false;
+      try {
+        ws.ping();
+      } catch (error) {
+        console.error('Error sending ping:', error);
+        clients.delete(ws);
+        ws.terminate();
+      }
     };
 
-    ws.on('pong', heartbeat);
-    heartbeat();
+    const interval = setInterval(ping, 30000);
+
+    ws.on('pong', () => {
+      isAlive = true;
+    });
 
     // Enviar estado inicial
     try {
@@ -80,43 +85,17 @@ export function setupWebSocket(app) {
 
     accountEvents.on('accountsUpdated', updateListener);
 
-    // Manejar errores
-    ws.on('error', (error) => {
-      console.error('WebSocket client error:', error);
-      clearTimeout(pingTimeout);
-      try {
-        ws.terminate();
-      } catch (termError) {
-        console.error('Error terminating client after error:', termError);
-      }
+    // Manejar errores y cierre
+    ws.on('error', () => {
+      clients.delete(ws);
+      clearInterval(interval);
     });
 
-    // Limpieza al cerrar
     ws.on('close', () => {
-      clearTimeout(pingTimeout);
+      clients.delete(ws);
+      clearInterval(interval);
       accountEvents.removeListener('accountsUpdated', updateListener);
     });
-  });
-
-  // Configurar el intervalo de ping
-  const pingInterval = setInterval(() => {
-    wss.clients.forEach(ws => {
-      try {
-        ws.ping();
-      } catch (error) {
-        console.error('Error sending ping:', error);
-        try {
-          ws.terminate();
-        } catch (termError) {
-          console.error('Error terminating client after ping failure:', termError);
-        }
-      }
-    });
-  }, 30000);
-
-  // Limpieza al cerrar el servidor
-  wss.on('close', () => {
-    clearInterval(pingInterval);
   });
 
   return wsInstance;

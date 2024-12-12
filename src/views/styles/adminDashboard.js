@@ -8,7 +8,7 @@ export const adminDashboardStyles = `
     border-radius: 1rem;
     padding: 1.5rem;
     margin-bottom: 1.5rem;
-    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
 
   .account-header {
@@ -16,7 +16,6 @@ export const adminDashboardStyles = `
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1.5rem;
-    flex-wrap: wrap;
     gap: 1rem;
   }
 
@@ -24,7 +23,6 @@ export const adminDashboardStyles = `
     display: flex;
     align-items: center;
     gap: 1rem;
-    flex-wrap: wrap;
   }
 
   .account-actions {
@@ -32,113 +30,117 @@ export const adminDashboardStyles = `
     gap: 0.5rem;
   }
 
-  .account-details {
-    display: grid;
-    gap: 1.5rem;
+  .url-section {
+    margin-bottom: 1.5rem;
   }
 
-  .cookie-manager {
-    background-color: var(--bg-primary);
-    padding: 1rem;
+  .url-input {
+    width: 100%;
+    padding: 0.5rem;
     border-radius: 0.5rem;
-    overflow: hidden;
+    border: 1px solid var(--text-secondary);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
   }
 
-  .cookie-form {
+  .users-section {
+    margin-bottom: 1.5rem;
+  }
+
+  .users-form {
     margin-bottom: 1rem;
   }
 
-  .cookie-form .form-group {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    align-items: end;
+  .number-input {
+    display: flex;
+    gap: 0.5rem;
   }
 
-  .cookie-item {
+  .users-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .user-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem;
-    background-color: var(--card-bg);
+    padding: 0.5rem;
+    background-color: var(--bg-primary);
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .stats-section {
+    background-color: var(--bg-primary);
+    padding: 1rem;
     border-radius: 0.5rem;
-    margin: 0.5rem 0;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    word-break: break-all;
   }
 
-  .cookie-info {
-    display: flex;
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
-    flex-wrap: wrap;
-    flex: 1;
-    min-width: 0;
+    margin-top: 1rem;
   }
 
-  .cookie-name {
-    font-weight: 500;
-    min-width: 100px;
+  .stat-item {
+    background-color: var(--card-bg);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    text-align: center;
   }
 
-  .cookie-value {
+  .stat-label {
+    display: block;
     color: var(--text-secondary);
-    flex: 1;
-    min-width: 0;
-    overflow-wrap: break-word;
+    margin-bottom: 0.5rem;
   }
 
-  .cookies-list {
-    max-height: 300px;
-    overflow-y: auto;
-    padding-right: 0.5rem;
+  .stat-value {
+    font-size: 1.25rem;
+    font-weight: 500;
   }
 
-  .cookies-list::-webkit-scrollbar {
-    width: 8px;
+  .icon-button {
+    padding: 0.5rem;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
   }
 
-  .cookies-list::-webkit-scrollbar-track {
-    background: var(--bg-primary);
-    border-radius: 4px;
+  .icon-button.danger {
+    background-color: var(--error);
   }
 
-  .cookies-list::-webkit-scrollbar-thumb {
-    background: var(--text-secondary);
-    border-radius: 4px;
+  .icon-button.warning {
+    background-color: #f59e0b;
+  }
+
+  .icon-button.success {
+    background-color: var(--success);
+  }
+
+  .add-button {
+    background-color: var(--accent);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
   }
 
   @media (max-width: 768px) {
-    .cookie-form .form-group {
-      grid-template-columns: 1fr;
-    }
-
-    .cookie-item {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-
-    .cookie-info {
-      width: 100%;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
     .account-header {
       flex-direction: column;
       align-items: flex-start;
     }
 
-    .account-title {
-      width: 100%;
-    }
-
-    .account-actions {
-      width: 100%;
-      justify-content: flex-end;
+    .stats-grid {
+      grid-template-columns: 1fr;
     }
   }
-
-  /* Resto de los estilos sin cambios */
-  ${commonStyles}
 `;
