@@ -1,0 +1,19 @@
+{
+  "accounts": [
+    {
+      "name": "Netflix Account 1",
+      "url": "https://www.netflix.com",
+      "status": "Available"
+    },
+    {
+      "name": "Netflix Account 2",
+      "url": "https://www.netflix.com",
+      "status": "In Use"
+    },
+    {
+      "name": "HBO Account 1",
+      "url": "https://www.hbo.com",
+      "status": "Available"
+    }
+  ]
+}
