@@ -1,11 +1,10 @@
 export function renderAccountCard(account) {
-  // Validación de seguridad para evitar errores si account es undefined
   if (!account) {
     return '<div class="account">Error: Cuenta no válida</div>';
   }
 
-  const statusClass = (account.status || 'unknown').toLowerCase().replace(' ', '-');
-  const statusBadgeClass = `status-${statusClass}`;
+  const status = account.status || 'Unknown';
+  const statusClass = status.toLowerCase().replace(' ', '-');
   const currentUsers = Array.isArray(account.currentUsers) ? account.currentUsers : [];
   const usersCount = currentUsers.length;
   const maxUsers = account.maxUsers || 1;
@@ -14,8 +13,8 @@ export function renderAccountCard(account) {
   return `
     <div class="account ${statusClass}">
       <h3>${account.name || 'Sin nombre'}</h3>
-      <div class="status-badge ${statusBadgeClass}">
-        ${account.status || 'Desconocido'}
+      <div class="status-badge status-${statusClass}">
+        ${status}
       </div>
       
       <div class="usage-info">
@@ -28,9 +27,9 @@ export function renderAccountCard(account) {
         ` : '<p class="no-slots">No hay espacios disponibles</p>'}
       </div>
       
-      ${account.status === 'Available' ? `
+      ${status === 'Available' ? `
         <p class="url">
-          <a href="/stream/${encodeURIComponent(account.name || '')}/" target="_blank" class="access-button">
+          <a href="/stream/${encodeURIComponent(account.name || '')}" target="_blank" class="access-button">
             Acceder al servicio
           </a>
         </p>

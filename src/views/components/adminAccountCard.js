@@ -1,5 +1,4 @@
 export function renderAdminAccountCard(account) {
-  // Validación de seguridad para evitar errores si account es undefined
   if (!account) {
     return '<div class="account">Error: Cuenta no válida</div>';
   }
@@ -17,7 +16,7 @@ export function renderAdminAccountCard(account) {
       <h3>${account.name || 'Sin nombre'}</h3>
       <p>URL: ${account.url || 'No definida'}</p>
       <div class="status-badge status-${(account.status || 'unknown').toLowerCase().replace(' ', '-')}">
-        ${account.status || 'Desconocido'}
+        ${account.status || 'Unknown'}
       </div>
 
       <div class="usage-section">
