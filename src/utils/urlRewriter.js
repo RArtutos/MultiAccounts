@@ -1,147 +1,106 @@
 import { isInternalUrl, normalizeUrl } from './urlUtils.js';
 
-export function rewriteUrls(html, account, targetDomain) {
+export function rewriteUrls(html, account, targetDomain, req) {
   const accountPrefix = `/stream/${encodeURIComponent(account.name)}`;
-  
-  // Lista de atributos que pueden contener URLs
-  const urlAttributes = [
-    'href',
-    'src',
-    'action',
-    'data-url',
-    'content',
-    'data-src',
-    'data-href',
-    'poster',
-    'formaction'
-  ];
+
+  function rewriteUrl(url) {
+    if (!url) return url;
+    
+    // Si ya tiene nuestro prefijo, no la modificamos
+    if (url.startsWith(accountPrefix)) {
+      return url;
+    }
+
+    // Siempre reescribir URLs que empiezan con /
+    if (url.startsWith('/')) {
+      const cleanUrl = url.replace(/^\/+/, '');
+      return `${accountPrefix}/${cleanUrl}`;
+    }
+
+    // Limpiar la URL de múltiples slashes
+    const cleanUrl = url.replace(/^\/+/, '');
+
+    // Si es una URL absoluta con protocolo
+    if (url.startsWith('http')) {
+      if (isInternalUrl(url, targetDomain)) {
+        const normalizedPath = normalizeUrl(url, targetDomain);
+        return `${accountPrefix}${normalizedPath}`;
+      }
+      return url;
+    }
+
+    // Si es una URL con protocolo relativo
+    if (url.startsWith('//')) {
+      const fullUrl = `https:${url}`;
+      if (isInternalUrl(fullUrl, targetDomain)) {
+        const normalizedPath = normalizeUrl(fullUrl, targetDomain);
+        return `${accountPrefix}${normalizedPath}`;
+      }
+      return url;
+    }
+
+    // Para cualquier otra URL, asumimos que es relativa
+    return `${accountPrefix}/${cleanUrl}`;
+  }
 
   let modifiedHtml = html;
 
-  // Reemplazar URLs absolutas que usan el dominio del proxy
-  const proxyUrlRegex = new RegExp(`https?:\/\/${req.get('host')}\/([^"'\\s>]*)`, 'gi');
-  modifiedHtml = modifiedHtml.replace(proxyUrlRegex, (match, path) => {
-    return `${accountPrefix}/${path}`;
-  });
-
-  // Reescribir URLs absolutas
+  // Reescribir atributos con URLs - Expresión regular más estricta
+  const urlAttributes = ['href', 'src', 'action', 'data-url', 'content', 'data-src', 'data-href', 'poster', 'formaction'];
+  
   urlAttributes.forEach(attr => {
-    const regex = new RegExp(`${attr}=["'](https?:\/\/[^"']*?)["']`, 'gi');
-    modifiedHtml = modifiedHtml.replace(regex, (match, url) => {
-      if (isInternalUrl(url, targetDomain)) {
-        const normalizedUrl = normalizeUrl(url, targetDomain);
-        const path = normalizedUrl.replace(/^https?:\/\/[^\/]+/, '');
-        return `${attr}="${accountPrefix}${path}"`;
-      }
-      return match;
+    // Expresión regular mejorada para capturar URLs con y sin comillas
+    const regex = new RegExp(`${attr}=(?:["']([^"']+)["']|([^ >]+))`, 'gi');
+    modifiedHtml = modifiedHtml.replace(regex, (match, quotedUrl, unquotedUrl) => {
+      const url = quotedUrl || unquotedUrl;
+      const rewrittenUrl = rewriteUrl(url);
+      return `${attr}="${rewrittenUrl}"`;
     });
   });
 
-  // Reescribir URLs relativas
-  urlAttributes.forEach(attr => {
-    const relativeRegex = new RegExp(`${attr}=["'](\/?[^"'http][^"']*?)["']`, 'gi');
-    modifiedHtml = modifiedHtml.replace(relativeRegex, (match, url) => {
-      if (url.startsWith('//')) {
-        if (isInternalUrl(url, targetDomain)) {
-          return `${attr}="${accountPrefix}${url.replace(/^\/\/[^\/]+/, '')}"`;
-        }
-        return match;
-      }
-      return `${attr}="${accountPrefix}/${url.replace(/^\//, '')}"`;
-    });
-  });
-
-  // Reescribir URLs en scripts
+  // Reescribir scripts y redirecciones con una expresión más inclusiva
   const scriptPatterns = [
-    // window.location y variantes
     {
-      regex: /(?:window\.location|location)(?:\.href|\.pathname)?\s*=\s*["'](https?:\/\/[^"']*|\/[^"']*)["']/gi,
-      handler: (match, url) => {
-        if (isInternalUrl(url, targetDomain)) {
-          const normalizedUrl = normalizeUrl(url, targetDomain);
-          const path = normalizedUrl.replace(/^https?:\/\/[^\/]+/, '');
-          return match.replace(url, `${accountPrefix}${path}`);
-        }
-        return match;
-      }
+      regex: /(?:window\.location|location|window\.location\.href|location\.href)\s*=\s*["']([^"']+)["']/gi,
+      handler: (match, url) => match.replace(url, rewriteUrl(url))
     },
-    // window.open y similares
     {
-      regex: /(?:window\.open|location\.replace)\(["'](https?:\/\/[^"']*|\/[^"']*)["']/gi,
-      handler: (match, url) => {
-        if (isInternalUrl(url, targetDomain)) {
-          const normalizedUrl = normalizeUrl(url, targetDomain);
-          const path = normalizedUrl.replace(/^https?:\/\/[^\/]+/, '');
-          return match.replace(url, `${accountPrefix}${path}`);
-        }
-        return match;
-      }
+      regex: /(?:window\.open|location\.replace|location\.assign)\(["']([^"']+)["']/gi,
+      handler: (match, url) => match.replace(url, rewriteUrl(url))
     },
-    // fetch/axios/XMLHttpRequest
     {
-      regex: /(?:fetch|axios|\.open\(['"](?:GET|POST|PUT|DELETE)["'],\s*)["'](https?:\/\/[^"']*|\/[^"']*)["']/gi,
-      handler: (match, url) => {
-        if (isInternalUrl(url, targetDomain)) {
-          const normalizedUrl = normalizeUrl(url, targetDomain);
-          const path = normalizedUrl.replace(/^https?:\/\/[^\/]+/, '');
-          return match.replace(url, `${accountPrefix}${path}`);
-        }
-        return match;
-      }
+      regex: /(?:fetch|axios|\.open\(['"](?:GET|POST|PUT|DELETE|PATCH)["'],\s*)["']([^"']+)["']/gi,
+      handler: (match, url) => match.replace(url, rewriteUrl(url))
     },
-    // URLs en strings de JavaScript
+    // Capturar asignaciones de URL sin comillas
     {
-      regex: /["'](https?:\/\/[^"']*|\/[^"']*)["']/g,
-      handler: (match, url) => {
-        if (isInternalUrl(url, targetDomain)) {
-          const normalizedUrl = normalizeUrl(url, targetDomain);
-          const path = normalizedUrl.replace(/^https?:\/\/[^\/]+/, '');
-          return match.replace(url, `${accountPrefix}${path}`);
-        }
-        return match;
-      }
+      regex: /(?:window\.location|location|window\.location\.href|location\.href)\s*=\s*([^"'\s;]+)/gi,
+      handler: (match, url) => match.replace(url, rewriteUrl(url))
     }
   ];
 
-  // Aplicar patrones de script
   scriptPatterns.forEach(({ regex, handler }) => {
     modifiedHtml = modifiedHtml.replace(regex, handler);
   });
 
-  // Reescribir meta refresh
+  // Reescribir meta refresh con una expresión más precisa
   modifiedHtml = modifiedHtml.replace(
-    /content=["'](\d*;\s*URL=)(https?:\/\/[^"']*|\/[^"']*)["']/gi,
-    (match, prefix, url) => {
-      if (isInternalUrl(url, targetDomain)) {
-        const normalizedUrl = normalizeUrl(url, targetDomain);
-        const path = normalizedUrl.replace(/^https?:\/\/[^\/]+/, '');
-        return `content="${prefix}${accountPrefix}${path}"`;
-      }
-      return match;
-    }
+    /content=["'](\d*;\s*URL=)([^"']+)["']/gi,
+    (match, prefix, url) => `content="${prefix}${rewriteUrl(url)}"`
   );
 
-  // Reescribir URLs en estilos inline
+  // Reescribir URLs en estilos con una expresión más inclusiva
   modifiedHtml = modifiedHtml.replace(
-    /url\(['"]?(https?:\/\/[^'")\s]+|\/[^'")\s]+)['"]?\)/gi,
-    (match, url) => {
-      if (isInternalUrl(url, targetDomain)) {
-        const normalizedUrl = normalizeUrl(url, targetDomain);
-        const path = normalizedUrl.replace(/^https?:\/\/[^\/]+/, '');
-        return `url("${accountPrefix}${path}")`;
-      }
-      return match;
-    }
+    /url\(['"]?([^'")\s]+)['"]?\)/gi,
+    (match, url) => `url("${rewriteUrl(url)}")`
   );
 
-  // Reescribir URLs en atributos data-* dinámicos
+  // Reescribir URLs en atributos data-* personalizados
   modifiedHtml = modifiedHtml.replace(
-    /data-[a-zA-Z0-9-]+=["'](https?:\/\/[^"']*|\/[^"']*)["']/gi,
+    /data-[a-zA-Z0-9-]+=["']([^"']+)["']/gi,
     (match, url) => {
-      if (isInternalUrl(url, targetDomain)) {
-        const normalizedUrl = normalizeUrl(url, targetDomain);
-        const path = normalizedUrl.replace(/^https?:\/\/[^\/]+/, '');
-        return match.replace(url, `${accountPrefix}${path}`);
+      if (url.startsWith('/') || url.startsWith('http') || url.startsWith('//')) {
+        return match.replace(url, rewriteUrl(url));
       }
       return match;
     }

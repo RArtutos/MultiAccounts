@@ -1,12 +1,14 @@
 import { CompressionTransform } from './compression.js';
 import { rewriteUrls } from './urlRewriter.js';
 import { Transform } from 'stream';
+import { isInternalUrl } from './urlUtils.js';
 
 class HtmlTransform extends Transform {
-  constructor(account, targetDomain) {
+  constructor(account, targetDomain, req) {
     super();
     this.account = account;
     this.targetDomain = targetDomain;
+    this.req = req;
     this.buffer = '';
   }
 
@@ -17,7 +19,7 @@ class HtmlTransform extends Transform {
 
   _flush(callback) {
     try {
-      const transformed = rewriteUrls(this.buffer, this.account, this.targetDomain);
+      const transformed = rewriteUrls(this.buffer, this.account, this.targetDomain, this.req);
       this.push(transformed);
       callback();
     } catch (error) {
@@ -32,15 +34,27 @@ export function handleProxyResponse(proxyRes, req, res, account, targetDomain) {
   // Manejar redirecciones
   if (proxyRes.headers.location) {
     const location = proxyRes.headers.location;
-    if (location.includes(targetDomain) || location.startsWith('/')) {
-      const newLocation = location.replace(/^https?:\/\/[^\/]+/, '');
-      proxyRes.headers.location = `/stream/${encodeURIComponent(account.name)}${newLocation}`;
+    const accountPrefix = `/stream/${encodeURIComponent(account.name)}`;
+    
+    if (location.startsWith('http')) {
+      try {
+        const locationUrl = new URL(location);
+        if (isInternalUrl(location, targetDomain)) {
+          const path = locationUrl.pathname + locationUrl.search + locationUrl.hash;
+          proxyRes.headers.location = `${accountPrefix}${path}`;
+        }
+      } catch (error) {
+        console.error('Error handling redirect:', error);
+      }
+    } else {
+      // Para URLs relativas o absolutas sin protocolo
+      const cleanPath = location.replace(/^\/+/, '');
+      proxyRes.headers.location = `${accountPrefix}/${cleanPath}`;
     }
   }
 
   // Copiar headers relevantes
   Object.keys(proxyRes.headers).forEach(key => {
-    // Excluir headers de compresión ya que manejaremos esto nosotros
     if (!['content-encoding', 'content-length'].includes(key.toLowerCase())) {
       res.setHeader(key, proxyRes.headers[key]);
     }
@@ -49,21 +63,17 @@ export function handleProxyResponse(proxyRes, req, res, account, targetDomain) {
   const contentType = proxyRes.headers['content-type'];
   const isHtml = contentType?.includes('text/html');
 
-  // Configurar la cadena de transformación
   let pipeline = proxyRes;
 
-  // Agregar descompresión/recompresión si es necesario
   if (proxyRes.headers['content-encoding'] === 'gzip') {
     pipeline = pipeline.pipe(new CompressionTransform());
     res.setHeader('content-encoding', 'gzip');
   }
 
-  // Agregar transformación HTML si es necesario
   if (isHtml) {
-    pipeline = pipeline.pipe(new HtmlTransform(account, targetDomain));
+    pipeline = pipeline.pipe(new HtmlTransform(account, targetDomain, req));
   }
 
-  // Manejar errores en la pipeline
   pipeline.on('error', (error) => {
     console.error('Error en la pipeline de proxy:', error);
     if (!res.headersSent) {
@@ -71,6 +81,5 @@ export function handleProxyResponse(proxyRes, req, res, account, targetDomain) {
     }
   });
 
-  // Enviar al cliente
   pipeline.pipe(res);
 }
