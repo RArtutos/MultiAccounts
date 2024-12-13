@@ -1,22 +1,27 @@
 import express from 'express';
-import { ProxyService } from '../proxy/services/proxyService.js';
+import { ProxyMiddleware } from '../proxy/middleware/proxyMiddleware.js';
 import { AccountValidator } from '../services/accountValidator.js';
 import * as accountService from '../services/accountService.js';
 
 const router = express.Router();
-const proxyService = new ProxyService();
+const proxyMiddleware = new ProxyMiddleware();
 const accountValidator = new AccountValidator(accountService);
 
-// Middleware para extraer el nombre de la cuenta y la ruta original
+// Extract account name and original path
 router.use('/stream/:accountName/*', (req, res, next) => {
-  req.originalPath = req.url.split('/stream/' + req.params.accountName)[1] || '/';
+  const fullPath = req.url;
+  const accountNameMatch = fullPath.match(/\/stream\/([^/]+)(.*)/);
+  if (accountNameMatch) {
+    req.originalPath = accountNameMatch[2] || '/';
+    req.accountName = decodeURIComponent(accountNameMatch[1]);
+  }
   next();
 });
 
-// Ruta principal del proxy
+// Main proxy route
 router.all('/stream/:accountName*', accountValidator.validateAccount.bind(accountValidator), (req, res, next) => {
   try {
-    const proxy = proxyService.createProxyMiddleware(req.streamingAccount, req.targetDomain);
+    const proxy = proxyMiddleware.create(req.streamingAccount, req.targetDomain);
     return proxy(req, res, next);
   } catch (error) {
     console.error('Error creating proxy:', error);
