@@ -1,12 +1,12 @@
-import { getDefaultHeaders } from './headers.js';
+import { ProxyManager } from '../proxyManager.js';
+import { CookieHandler } from '../handlers/cookieHandler.js';
+import { HeaderHandler } from '../handlers/headerHandler.js';
+
+const proxyManager = new ProxyManager();
 
 export function createProxyConfig(account, req, targetDomain) {
-  const headers = getDefaultHeaders(req.headers['user-agent']);
-  const cookieString = account.cookies ? 
-    Object.entries(account.cookies)
-      .map(([name, value]) => `${name}=${value}`)
-      .join('; ') : 
-    '';
+  const cookieHandler = new CookieHandler(account);
+  const headerHandler = new HeaderHandler(targetDomain);
 
   return {
     target: account.url,
@@ -16,46 +16,89 @@ export function createProxyConfig(account, req, targetDomain) {
     autoRewrite: true,
     ws: true,
     xfwd: true,
+    agent: proxyManager.getAgent(),
+    
     cookieDomainRewrite: {
       '*': req.get('host')
     },
     cookiePathRewrite: {
       '*': '/'
     },
-    headers: {
-      ...headers,
-      host: targetDomain,
-      ...(cookieString && { cookie: cookieString })
-    },
-    onProxyRes: (proxyRes, req, res) => {
-      // Remove problematic headers
-      const headersToRemove = [
-        'content-security-policy',
-        'x-frame-options',
-        'content-security-policy-report-only',
-        'strict-transport-security',
-        'x-content-type-options',
-        'x-xss-protection'
-      ];
 
-      headersToRemove.forEach(header => {
-        delete proxyRes.headers[header];
-      });
-
-      // Handle redirects
-      if (proxyRes.headers.location) {
-        const location = proxyRes.headers.location;
-        if (location.startsWith('http')) {
-          try {
-            const url = new URL(location);
-            if (url.hostname === targetDomain) {
-              proxyRes.headers.location = `https://${req.get('host')}${url.pathname}${url.search}`;
+    // Configurar headers antes de que se envíe la solicitud
+    onProxyReq: (proxyReq, req, res) => {
+      if (!proxyReq._headerSent) {
+        try {
+          // Establecer headers básicos primero
+          const headers = headerHandler.getDefaultHeaders(req.headers['user-agent']);
+          Object.entries(headers).forEach(([key, value]) => {
+            try {
+              proxyReq.setHeader(key, value);
+            } catch (error) {
+              console.warn(`Warning: Could not set header ${key}:`, error.message);
             }
-          } catch (error) {
-            console.error('Error handling redirect:', error);
+          });
+
+          // Luego intentar inyectar cookies
+          const cookieString = cookieHandler.getAccountCookies();
+          if (cookieString) {
+            try {
+              const existingCookies = proxyReq.getHeader('cookie') || '';
+              const finalCookies = existingCookies ? 
+                `${existingCookies}; ${cookieString}` : 
+                cookieString;
+              proxyReq.setHeader('cookie', finalCookies);
+            } catch (error) {
+              console.warn('Warning: Could not set cookies:', error.message);
+            }
           }
+        } catch (error) {
+          console.warn('Warning in onProxyReq:', error.message);
         }
       }
+    },
+
+    // Manejar la respuesta del proxy
+    onProxyRes: (proxyRes, req, res) => {
+      try {
+        // Manejar cookies de respuesta
+        const setCookieHeader = proxyRes.headers['set-cookie'];
+        if (Array.isArray(setCookieHeader)) {
+          const transformedCookies = cookieHandler.transformCookies(setCookieHeader);
+          if (transformedCookies.length > 0) {
+            proxyRes.headers['set-cookie'] = transformedCookies;
+          }
+        }
+
+        // Eliminar headers problemáticos
+        headerHandler.removeProblematicHeaders(proxyRes.headers);
+
+        // Asegurar que Content-Type esté establecido
+        if (!proxyRes.headers['content-type']) {
+          proxyRes.headers['content-type'] = 'text/html; charset=utf-8';
+        }
+      } catch (error) {
+        console.warn('Warning in onProxyRes:', error.message);
+      }
+    },
+
+    // Manejar errores del proxy
+    onError: async (err, req, res) => {
+      console.error('Error de proxy:', err);
+
+      if (await proxyManager.switchToFallback()) {
+        console.log('Reintentando con proxy alternativo...');
+        return;
+      }
+
+      if (!res.headersSent) {
+        res.writeHead(500, { 
+          'Content-Type': 'text/plain',
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        });
+        res.end('Error de proxy');
+      }
+      proxyManager.resetRetryCount();
     }
   };
 }

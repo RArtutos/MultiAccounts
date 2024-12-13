@@ -103,7 +103,7 @@ export async function removeCookie(accountName, cookieName) {
     throw new Error('Account not found');
   }
 
-  if (account.cookies && account.cookies[cookieName]) {
+  if (account.cookies && cookieName in account.cookies) {
     delete account.cookies[cookieName];
     await saveAccounts(accounts);
   }

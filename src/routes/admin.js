@@ -51,10 +51,16 @@ router.post('/accounts/:name/cookies', adminAuth, async (req, res) => {
   try {
     const accountName = decodeURIComponent(req.params.name);
     const { cookieName, cookieValue } = req.body;
+    
+    if (!cookieName || !cookieValue) {
+      return res.status(400).json({ error: 'Nombre y valor de cookie requeridos' });
+    }
+
     await accountService.addCookie(accountName, cookieName, cookieValue);
     res.redirect('/admin');
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Error adding cookie:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -63,10 +69,16 @@ router.delete('/accounts/:name/cookies/:cookieName', adminAuth, async (req, res)
   try {
     const accountName = decodeURIComponent(req.params.name);
     const cookieName = decodeURIComponent(req.params.cookieName);
+    
+    if (!cookieName) {
+      return res.status(400).json({ error: 'Nombre de cookie requerido' });
+    }
+
     await accountService.removeCookie(accountName, cookieName);
     res.json({ success: true });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Error removing cookie:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
