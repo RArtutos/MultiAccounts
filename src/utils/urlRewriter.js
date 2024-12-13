@@ -1,6 +1,8 @@
 import { isInternalUrl } from './urlUtils.js';
 
 export function rewriteUrls(content, account, targetDomain, req) {
+  if (!content || !account) return content;
+
   const accountPrefix = `/stream/${encodeURIComponent(account.name)}`;
   const baseUrl = account.url.replace(/\/$/, '');
 
@@ -9,6 +11,11 @@ export function rewriteUrls(content, account, targetDomain, req) {
 
     // No reescribir si ya tiene nuestro prefijo
     if (url.startsWith(accountPrefix)) {
+      return url;
+    }
+
+    // No reescribir recursos estáticos
+    if (url.match(/\.(jpg|jpeg|png|gif|svg|webp|css|js|woff2?|ttf|eot|ico)(\?.*)?$/i)) {
       return url;
     }
 
@@ -22,12 +29,12 @@ export function rewriteUrls(content, account, targetDomain, req) {
         return url;
       }
 
-      // Manejar URLs relativas
+      // Manejar URLs que empiezan con /
       if (url.startsWith('/')) {
         return `${accountPrefix}${url}`;
       }
 
-      // URLs relativas sin /
+      // Manejar URLs relativas sin /
       const currentPath = req?.originalPath || '/';
       const currentDir = currentPath.split('/').slice(0, -1).join('/');
       const resolvedPath = new URL(url, `${baseUrl}${currentDir}/`).pathname;
@@ -35,13 +42,14 @@ export function rewriteUrls(content, account, targetDomain, req) {
 
     } catch (error) {
       console.error('Error transforming URL:', error);
-      return url;
+      // Si hay error, asegurarnos de que al menos tenga el prefijo
+      return url.startsWith('/') ? `${accountPrefix}${url}` : `${accountPrefix}/${url}`;
     }
   }
 
   // Reescribir URLs en atributos HTML
   content = content.replace(
-    /(href|src|action|data-src|poster|formaction)=["']([^"']+)["']/gi,
+    /(href|src|action|data-src|poster|formaction|data-url|data-href)=["']([^"']+)["']/gi,
     (match, attr, url) => `${attr}="${rewriteUrl(url)}"`
   );
 
@@ -56,22 +64,30 @@ export function rewriteUrls(content, account, targetDomain, req) {
     // Redirecciones directas
     /(window\.location|location|window\.location\.href|location\.href)\s*=\s*["']([^"']+)["']/gi,
     // Funciones de navegación
-    /(window\.open|location\.replace|location\.assign)\(["']([^"']+)["']/gi,
+    /(window\.open|location\.replace|location\.assign|navigate|history\.pushState.*?|history\.replaceState.*?)\(["']([^"']+)["']/gi,
     // AJAX y Fetch
     /(fetch|axios\.get|axios\.post|\.ajax)\(["']([^"']+)["']/gi,
     // URLs en strings
-    /(['"])(\/[^'"]+)(['"])/g
+    /(['"])(\/[^'"]+)(['"])/g,
+    // URLs sin comillas en JavaScript
+    /:\s*(\/(api|auth|login|logout|lt|[a-zA-Z0-9-]+)\/[a-zA-Z0-9-\/]*)/g
   ];
 
   jsPatterns.forEach(pattern => {
     content = content.replace(pattern, (match, prefix, url, suffix) => {
-      if (url.match(/\.(jpg|jpeg|png|gif|svg|webp|css|js|woff2?|ttf|eot)(\?.*)?$/i)) {
+      if (!url || url.match(/\.(jpg|jpeg|png|gif|svg|webp|css|js|woff2?|ttf|eot|ico)(\?.*)?$/i)) {
         return match;
       }
       const rewrittenUrl = rewriteUrl(url);
       return suffix ? `${prefix}${rewrittenUrl}${suffix}` : match.replace(url, rewrittenUrl);
     });
   });
+
+  // Reescribir URLs en estilos inline
+  content = content.replace(
+    /url\(['"]?([^'")]+)['"]?\)/gi,
+    (match, url) => `url('${rewriteUrl(url)}')`
+  );
 
   return content;
 }

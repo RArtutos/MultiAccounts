@@ -1,12 +1,10 @@
 import { Transform } from 'stream';
-import { rewriteUrls } from '../../utils/urlRewriter.js';
+import { ContentRewriter } from '../../utils/url/contentRewriter.js';
 
 export class ContentTransformer extends Transform {
-  constructor(account, targetDomain, req) {
+  constructor(account, req) {
     super();
-    this.account = account;
-    this.targetDomain = targetDomain;
-    this.req = req;
+    this.contentRewriter = new ContentRewriter(account, req);
     this.buffer = '';
   }
 
@@ -17,7 +15,7 @@ export class ContentTransformer extends Transform {
 
   _flush(callback) {
     try {
-      const transformed = rewriteUrls(this.buffer, this.account, this.targetDomain, this.req);
+      const transformed = this.contentRewriter.rewrite(this.buffer);
       this.push(transformed);
       callback();
     } catch (error) {
