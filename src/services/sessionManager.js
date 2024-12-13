@@ -5,9 +5,9 @@ class SessionManager {
     this.sessions = new Map();
   }
 
-  async createSession(accountId, cookies = []) {
+  async createSession(accountId, cookies = [], domain) {
     try {
-      const page = await browserPool.getPage(accountId, cookies);
+      const page = await browserPool.getPage(accountId, cookies, domain);
       
       this.sessions.set(accountId, {
         page,
@@ -30,9 +30,9 @@ class SessionManager {
     return null;
   }
 
-  async updateSession(accountId, cookies) {
+  async updateSession(accountId, cookies, domain) {
     try {
-      await browserPool.updatePageCookies(accountId, cookies);
+      await browserPool.updatePageCookies(accountId, cookies, domain);
       const session = this.sessions.get(accountId);
       if (session) {
         session.lastAccess = Date.now();
