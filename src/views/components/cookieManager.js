@@ -2,7 +2,7 @@ export function renderCookieManager(account) {
   return `
     <div class="cookie-manager">
       <h4>Gestión de Cookies</h4>
-      <form action="/admin/accounts/${encodeURIComponent(account.name || '')}/cookies" method="POST" class="cookie-form">
+      <form action="/admin/accounts/${encodeURIComponent(account.name)}/cookies" method="POST" class="cookie-form">
         <div class="form-group">
           <input type="text" name="cookieName" placeholder="Nombre" required>
           <input type="text" name="cookieValue" placeholder="Valor" required>
@@ -22,10 +22,9 @@ export function renderCookieManager(account) {
                 </div>
               </div>
               <div class="cookie-actions">
-                <form action="/admin/accounts/${encodeURIComponent(account.name || '')}/cookies/${encodeURIComponent(name)}" 
+                <form action="/admin/accounts/${encodeURIComponent(account.name)}/cookies/${encodeURIComponent(name)}" 
                       method="POST" 
                       class="inline-form">
-                  <input type="hidden" name="_method" value="DELETE">
                   <button type="submit" class="icon-button small danger" title="Eliminar cookie">❌</button>
                 </form>
               </div>

@@ -45,4 +45,34 @@ router.post('/accounts/:name/toggle', adminAuth, async (req, res) => {
   }
 });
 
+// Añadir cookie
+router.post('/accounts/:name/cookies', adminAuth, async (req, res) => {
+  try {
+    const accountName = decodeURIComponent(req.params.name);
+    const { cookieName, cookieValue } = req.body;
+    
+    if (!cookieName || !cookieValue) {
+      throw new Error('Cookie name and value are required');
+    }
+
+    await accountService.addCookie(accountName, cookieName, cookieValue);
+    res.redirect('/admin');
+  } catch (error) {
+    res.status(400).send(error.message);
+  }
+});
+
+// Eliminar cookie
+router.post('/accounts/:name/cookies/:cookieName', adminAuth, async (req, res) => {
+  try {
+    const accountName = decodeURIComponent(req.params.name);
+    const cookieName = decodeURIComponent(req.params.cookieName);
+    
+    await accountService.removeCookie(accountName, cookieName);
+    res.redirect('/admin');
+  } catch (error) {
+    res.status(400).send(error.message);
+  }
+});
+
 export { router as adminRouter };
