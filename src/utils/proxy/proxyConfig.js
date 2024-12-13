@@ -1,42 +1,25 @@
-import { StaticHandler } from './static/staticHandler.js';
-import { HeaderManager } from './headers/headerManager.js';
-import { CookieManager } from './cookies/cookieManager.js';
-
-const staticHandler = new StaticHandler();
+import { createProxyOptions } from './config/proxyOptions.js';
+import { createCookieConfig } from './config/cookieConfig.js';
+import { RequestHandler } from './handlers/requestHandler.js';
+import { ResponseHandler } from './handlers/responseHandler.js';
+import { ErrorHandler } from './handlers/errorHandler.js';
 
 export function createProxyConfig(account, req, targetDomain) {
-  const accountPath = `/stream/${encodeURIComponent(account.name)}`;
-  const userAgent = req.headers['user-agent'];
+  const requestHandler = new RequestHandler(account, req);
+  const responseHandler = new ResponseHandler();
+  const errorHandler = new ErrorHandler();
 
   return {
     target: account.url,
-    changeOrigin: true,
-    secure: true,
-    followRedirects: true,
-    autoRewrite: true,
-    ws: true,
-    xfwd: true,
-    cookieDomainRewrite: {
-      '*': req.get('host')
-    },
-    pathRewrite: (path) => {
-      if (staticHandler.isStaticResource(path)) {
-        return path;
+    ...createProxyOptions(req),
+    ...createCookieConfig(req),
+    pathRewrite: requestHandler.createPathRewrite(),
+    onProxyReq: (proxyReq, req, res) => {
+      if (!res.headersSent) {
+        requestHandler.handleRequest(proxyReq);
       }
-      return path.startsWith(accountPath) ? 
-        path.slice(accountPath.length) || '/' : 
-        path;
     },
-    onProxyReq: (proxyReq) => {
-      try {
-        const headerManager = new HeaderManager(proxyReq, userAgent);
-        const cookieManager = new CookieManager(proxyReq, account);
-
-        headerManager.setHeaders();
-        cookieManager.setCookies();
-      } catch (error) {
-        console.error('Error in onProxyReq:', error);
-      }
-    }
+    onProxyRes: responseHandler.handle.bind(responseHandler),
+    onError: errorHandler.handle.bind(errorHandler)
   };
 }
