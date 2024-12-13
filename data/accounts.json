@@ -7,7 +7,7 @@
       "maxUsers": 4,
       "currentUsers": [],
       "platform": "netflix",
-      "icon": "🎬",
+      "icon": "",
       "tags": ["streaming", "movies"],
       "stats": {
         "totalAccesses": 0,
@@ -21,7 +21,7 @@
       "status": "In Use",
       "maxUsers": 2,
       "platform": "netflix",
-      "icon": "🎬",
+      "icon": "",
       "tags": ["streaming", "movies"],
       "currentUsers": [],
       "stats": {
@@ -36,7 +36,7 @@
       "status": "Available",
       "maxUsers": 3,
       "platform": "hbo",
-      "icon": "📺",
+      "icon": "",
       "tags": ["streaming", "series"],
       "currentUsers": [],
       "stats": {

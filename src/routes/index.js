@@ -2,7 +2,7 @@ import express from 'express';
 import { adminRouter } from './admin.js';
 import { proxyRouter } from './proxy.js';
 import * as accountService from '../services/accountService.js';
-import { renderDashboard } from '../views/templates.js';
+import { renderUserDashboard } from '../views/templates/userDashboard.js';
 import { config } from '../config/index.js';
 
 const router = express.Router();
@@ -26,7 +26,7 @@ router.get('/dashboard', async (req, res) => {
     ...account,
     proxyUrl: `${config.domain.protocol}://${account.name}.${config.domain.base}`
   }));
-  res.send(renderDashboard(accountsWithUrls));
+  res.send(renderUserDashboard(accountsWithUrls));
 });
 
 // Redirección raíz al dashboard

@@ -1,5 +1,3 @@
-import { getPlatformIcon } from '../../utils/platformIcons.js';
-
 export function renderAccountCard(account) {
   if (!account) {
     return '<div class="account">Error: Cuenta no válida</div>';
@@ -16,7 +14,8 @@ export function renderAccountCard(account) {
     <div class="account ${statusClass}" data-platform="${account.platform || ''}">
       <div class="account-header">
         <div class="platform-icon">
-          ${getPlatformIcon(account.platform)}
+          <img src="${account.icon || '/default-icon.png'}" alt="${account.platform}" 
+               onerror="this.src='/default-icon.png'">
         </div>
         <div class="platform-badge">${account.platform || 'Unknown'}</div>
       </div>
@@ -34,22 +33,31 @@ export function renderAccountCard(account) {
       </div>
       
       <div class="usage-info">
-        <p>Usuarios conectados: <span class="current-users">${usersCount}</span>/${maxUsers}</p>
+        <div class="users-counter">
+          <div class="counter-value">${usersCount}/${maxUsers}</div>
+          <div class="counter-label">Usuarios Conectados</div>
+        </div>
         <div class="progress-bar">
           <div class="progress" style="width: ${(usersCount / maxUsers) * 100}%"></div>
         </div>
-        ${availableSlots > 0 ? `
-          <p class="slots-available">¡${availableSlots} ${availableSlots === 1 ? 'espacio disponible' : 'espacios disponibles'}!</p>
-        ` : '<p class="no-slots">No hay espacios disponibles</p>'}
       </div>
-      
+
       ${status === 'Available' ? `
-        <p class="url">
+        <div class="account-actions">
           <a href="${account.proxyUrl}" target="_blank" class="access-button">
-            Acceder al servicio
+            <span class="button-text">Acceder ahora</span>
           </a>
-        </p>
-      ` : ''}
+          ${availableSlots > 0 ? `
+            <div class="slots-available">
+              ${availableSlots} ${availableSlots === 1 ? 'espacio libre' : 'espacios libres'}
+            </div>
+          ` : ''}
+        </div>
+      ` : `
+        <div class="account-unavailable">
+          Cuenta no disponible
+        </div>
+      `}
     </div>
   `;
 }

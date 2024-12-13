@@ -1,7 +1,7 @@
 import express from 'express';
 import { adminAuth } from '../middleware/auth.js';
 import * as accountService from '../services/accountService.js';
-import { renderAdminDashboard } from '../views/templates.js';
+import { renderAdminDashboard } from '../views/templates/adminDashboard.js';
 
 const router = express.Router();
 
