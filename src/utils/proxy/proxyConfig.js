@@ -1,15 +1,8 @@
-import { StaticHandler } from './static/staticHandler.js';
-import { PathHandler } from './path/pathHandler.js';
-import { HeaderManager } from './headers/headerManager.js';
-import { CookieManager } from './cookies/cookieManager.js';
+import { ProxyManager } from './proxyManager.js';
 
-const staticHandler = new StaticHandler();
+const proxyManager = new ProxyManager();
 
 export function createProxyConfig(account, req, targetDomain) {
-  const accountPrefix = `/stream/${encodeURIComponent(account.name)}`;
-  const pathHandler = new PathHandler(accountPrefix);
-  const userAgent = req.headers['user-agent'];
-
   return {
     target: account.url,
     changeOrigin: true,
@@ -18,40 +11,43 @@ export function createProxyConfig(account, req, targetDomain) {
     autoRewrite: true,
     ws: true,
     xfwd: true,
-    cookieDomainRewrite: {
-      '*': req.get('host')
-    },
-    pathRewrite: (path) => {
-      const isStatic = staticHandler.isStaticResource(path);
-      return pathHandler.rewritePath(path, isStatic);
-    },
+    agent: proxyManager.getAgent(),
     onProxyReq: (proxyReq, req, res) => {
       try {
-        // Configurar headers
-        const headerManager = new HeaderManager(proxyReq, userAgent);
-        headerManager.setHeaders();
+        // Headers básicos
+        proxyReq.setHeader('User-Agent', req.headers['user-agent'] || 'Mozilla/5.0');
+        proxyReq.setHeader('Accept', '*/*');
+        proxyReq.setHeader('Accept-Language', 'es-MX,es;q=0.9,en;q=0.8');
+        proxyReq.setHeader('Accept-Encoding', 'gzip, deflate');
 
-        // Configurar cookies
-        const cookieManager = new CookieManager(proxyReq, account);
-        cookieManager.setCookies();
-
-        // Asegurar que el host sea el correcto
-        proxyReq.setHeader('host', targetDomain);
-
-        // Mantener la IP original
-        const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-        if (clientIp) {
-          proxyReq.setHeader('x-forwarded-for', clientIp);
+        // Cookies de la cuenta si existen
+        if (account.cookies) {
+          const cookieString = Object.entries(account.cookies)
+            .map(([name, value]) => `${name}=${value}`)
+            .join('; ');
+          
+          if (cookieString) {
+            proxyReq.setHeader('cookie', cookieString);
+          }
         }
+
       } catch (error) {
-        console.error('Error in onProxyReq:', error);
+        console.error('Error en onProxyReq:', error);
       }
     },
-    onError: (err, req, res) => {
-      console.error('Proxy error:', err);
-      if (!res.headersSent) {
-        res.writeHead(500, { 'Content-Type': 'text/plain' });
-        res.end('Error de proxy: ' + err.message);
+    onError: async (err, req, res) => {
+      console.error('Error de proxy:', err);
+
+      // Intentar cambiar de proxy si hay error
+      if (await proxyManager.switchToFallback()) {
+        console.log('Reintentando con proxy alternativo...');
+        // La petición se reintentará automáticamente con el nuevo agente
+      } else {
+        if (!res.headersSent) {
+          res.writeHead(500, { 'Content-Type': 'text/plain' });
+          res.end('Error de proxy');
+        }
+        proxyManager.resetRetryCount();
       }
     }
   };
