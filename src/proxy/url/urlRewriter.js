@@ -1,55 +1,76 @@
 export class UrlRewriter {
-  rewritePath(path, req, account) {
-    const accountPrefix = `/stream/${encodeURIComponent(account.name)}`;
-    
-    // If path doesn't start with our prefix, return as is
-    if (!path.startsWith(accountPrefix)) {
-      return path;
-    }
-
-    // Remove the account prefix to get the original path
-    const originalPath = path.slice(accountPrefix.length) || '/';
-    
-    // Store the original path in the request for later use
-    req.originalPath = originalPath;
-    
-    return originalPath;
-  }
-
-  rewriteUrl(url, account, currentPath = '/') {
-    if (!url) return url;
+  rewriteUrl(url, account, targetDomain) {
+    if (!url || typeof url !== 'string') return url;
 
     const accountPrefix = `/stream/${encodeURIComponent(account.name)}`;
-    
-    // Don't rewrite if already has our prefix
-    if (url.startsWith(accountPrefix)) {
-      return url;
-    }
 
     try {
-      // Handle absolute URLs
+      // No reescribir si ya tiene nuestro prefijo
+      if (url.startsWith(accountPrefix)) {
+        return url;
+      }
+
+      // No reescribir recursos estáticos
+      if (this.isStaticResource(url)) {
+        return url;
+      }
+
+      // Manejar URLs absolutas
       if (url.startsWith('http') || url.startsWith('//')) {
         const urlObj = new URL(url.startsWith('//') ? `https:${url}` : url);
-        const targetDomain = new URL(account.url).hostname;
-        
-        if (urlObj.hostname === targetDomain) {
+        if (this.isInternalDomain(urlObj.hostname, targetDomain)) {
           return `${accountPrefix}${urlObj.pathname}${urlObj.search}${urlObj.hash}`;
         }
         return url;
       }
 
-      // Handle absolute paths
+      // Manejar URLs relativas
       if (url.startsWith('/')) {
         return `${accountPrefix}${url}`;
       }
 
-      // Handle relative paths
-      const base = new URL(account.url);
-      const resolvedUrl = new URL(url, `${base.origin}${currentPath}`);
-      return `${accountPrefix}${resolvedUrl.pathname}${resolvedUrl.search}${resolvedUrl.hash}`;
+      // URLs relativas sin /
+      return `${accountPrefix}/${url}`;
     } catch (error) {
-      console.error('Error rewriting URL:', error);
+      console.error('Error reescribiendo URL:', error);
       return url;
     }
+  }
+
+  rewritePath(path, req, account) {
+    if (!path || !account) return path;
+
+    const accountPrefix = `/stream/${encodeURIComponent(account.name)}`;
+    
+    try {
+      // Si la URL ya tiene nuestro prefijo, extraer la ruta original
+      if (path.startsWith(accountPrefix)) {
+        const originalPath = path.slice(accountPrefix.length) || '/';
+        if (req) {
+          req.originalPath = originalPath;
+        }
+        return originalPath;
+      }
+      
+      // Si es una ruta absoluta sin prefijo, añadir el prefijo
+      if (path.startsWith('/') && !this.isStaticResource(path)) {
+        return `${accountPrefix}${path}`;
+      }
+      
+      return path;
+    } catch (error) {
+      console.error('Error reescribiendo path:', error);
+      return path;
+    }
+  }
+
+  isStaticResource(url) {
+    return /\.(jpg|jpeg|png|gif|svg|webp|css|js|woff2?|ttf|eot)(\?.*)?$/i.test(url);
+  }
+
+  isInternalDomain(hostname, targetDomain) {
+    return hostname === targetDomain || 
+           hostname.endsWith(`.${targetDomain}`) || 
+           targetDomain.endsWith(`.${hostname}`);
   }
 }

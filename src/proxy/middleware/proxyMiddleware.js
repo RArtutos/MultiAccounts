@@ -20,25 +20,58 @@ export class ProxyMiddleware {
       followRedirects: true,
       ws: true,
       xfwd: true,
-      selfHandleResponse: true,
+      cookieDomainRewrite: {
+        '*': targetDomain
+      },
 
       onProxyReq: (proxyReq, req) => {
-        // Set headers first
-        this.headerManager.setHeaders(proxyReq, req);
-        
-        // Then set cookies to ensure they're not overwritten
-        this.cookieManager.setCookies(proxyReq, account);
-        
-        // Set the host header to match the target
-        proxyReq.setHeader('host', targetDomain);
+        try {
+          // Verificar si los headers ya fueron enviados
+          if (!proxyReq.headersSent) {
+            // Establecer headers primero
+            this.headerManager.setHeaders(proxyReq, req);
+            
+            // Luego establecer cookies
+            this.cookieManager.setCookies(proxyReq, account);
+            
+            // Establecer el host header para que coincida con el target
+            proxyReq.setHeader('host', targetDomain);
+          }
+        } catch (error) {
+          console.error('Error en onProxyReq:', error);
+        }
       },
 
       onProxyRes: (proxyRes, req, res) => {
-        this.responseHandler.handle(proxyRes, req, res, account, targetDomain);
+        try {
+          // Solo procesar la respuesta si los headers no han sido enviados
+          if (!res.headersSent) {
+            this.responseHandler.handle(proxyRes, req, res, account, targetDomain);
+          } else {
+            // Si los headers ya fueron enviados, solo pipe la respuesta
+            proxyRes.pipe(res);
+          }
+        } catch (error) {
+          console.error('Error en onProxyRes:', error);
+          if (!res.headersSent) {
+            res.status(500).send('Error interno del servidor');
+          }
+        }
       },
 
       pathRewrite: (path, req) => {
         return this.urlRewriter.rewritePath(path, req, account);
+      },
+
+      // Manejar errores del proxy
+      onError: (err, req, res) => {
+        console.error('Error en el proxy:', err);
+        if (!res.headersSent) {
+          res.status(502).json({
+            error: 'Error en el proxy',
+            message: err.message
+          });
+        }
       }
     };
 
