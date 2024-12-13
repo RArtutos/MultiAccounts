@@ -16,13 +16,25 @@ services:
       - ADMIN_PASSWORD=secret
     restart: unless-stopped
 
-  nginx:
-    image: nginx:alpine
+  squid:
+    build:
+      context: .
+      dockerfile: Dockerfile.squid
     ports:
-      - "80:80"
+      - "3128:3128"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./squid/squid.conf:/etc/squid/squid.conf:ro
+      - squid_cache:/var/spool/squid
+      - squid_logs:/var/log/squid
+      - squid_run:/var/run/squid
+    environment:
+      - TZ=UTC
     depends_on:
       - proxy
     restart: unless-stopped
+    user: proxy
+
+volumes:
+  squid_cache:
+  squid_logs:
+  squid_run:

@@ -16,7 +16,7 @@ router.post('/accounts', adminAuth, async (req, res) => {
   try {
     const { name, url, maxUsers, platform, icon, tags } = req.body;
     const tagsList = tags ? tags.split(',').map(tag => tag.trim()) : [];
-    await accountService.addAccount(name, url, maxUsers, platform, icon, tagsList);
+    await accountService.addAccount(name, url, maxUsers, platform, icon || 'https://i.ibb.co/vVTrtdH/Icono-video.png', tagsList);
     res.redirect('/admin');
   } catch (error) {
     res.status(400).send(error.message);
@@ -28,6 +28,29 @@ router.delete('/accounts/:name', adminAuth, async (req, res) => {
   try {
     const accountName = decodeURIComponent(req.params.name);
     await accountService.deleteAccount(accountName);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Gestionar cookies
+router.post('/accounts/:name/cookies', adminAuth, async (req, res) => {
+  try {
+    const accountName = decodeURIComponent(req.params.name);
+    const { cookieName, cookieValue } = req.body;
+    await accountService.addCookie(accountName, cookieName, cookieValue);
+    res.redirect('/admin');
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.delete('/accounts/:name/cookies/:cookieName', adminAuth, async (req, res) => {
+  try {
+    const accountName = decodeURIComponent(req.params.name);
+    const cookieName = decodeURIComponent(req.params.cookieName);
+    await accountService.removeCookie(accountName, cookieName);
     res.json({ success: true });
   } catch (error) {
     res.status(400).json({ error: error.message });
