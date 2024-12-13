@@ -9,5 +9,9 @@ export const config = {
   admin: {
     username: 'admin',
     password: 'secret'
+  },
+  domain: {
+    base: 'artutos.us.kg',
+    protocol: 'https'
   }
 };

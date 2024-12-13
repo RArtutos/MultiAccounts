@@ -1,38 +1,25 @@
+import { STATIC_PATTERNS } from './staticPatterns.js';
+
 export class StaticHandler {
-  constructor() {
-    this.staticExtensions = new Set([
-      // Imágenes
-      'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'ico', 'bmp',
-      // Fuentes
-      'woff', 'woff2', 'ttf', 'eot', 'otf',
-      // Media
-      'mp4', 'webm', 'mp3', 'wav',
-      // Recursos web
-      'css', 'js', 'json'
-    ]);
-
-    this.transformableTypes = new Set([
-      'text/html',
-      'application/javascript',
-      'text/javascript'
-    ]);
-  }
-
-  isStaticResource(url = '') {
+  isStaticResource(url) {
     try {
-      const extension = url.split('.').pop().split('?')[0].toLowerCase();
-      return this.staticExtensions.has(extension);
+      // Si no hay URL, no es un recurso estático
+      if (!url) return false;
+
+      // Comprobar patrones de recursos estáticos
+      return STATIC_PATTERNS.some(pattern => pattern.test(url));
     } catch {
       return false;
     }
   }
 
-  shouldTransform(contentType = '', url = '') {
-    if (!contentType || this.isStaticResource(url)) {
-      return false;
-    }
+  shouldTransform(contentType, url) {
+    if (!contentType) return false;
+    
+    // No transformar recursos estáticos
+    if (this.isStaticResource(url)) return false;
 
-    const baseType = contentType.split(';')[0].toLowerCase();
-    return this.transformableTypes.has(baseType);
+    // Solo transformar HTML
+    return contentType.includes('text/html');
   }
 }

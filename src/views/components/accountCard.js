@@ -29,7 +29,7 @@ export function renderAccountCard(account) {
       
       ${status === 'Available' ? `
         <p class="url">
-          <a href="/stream/${encodeURIComponent(account.name || '')}" target="_blank" class="access-button">
+          <a href="${account.proxyUrl}" target="_blank" class="access-button">
             Acceder al servicio
           </a>
         </p>

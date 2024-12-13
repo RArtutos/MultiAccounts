@@ -1,22 +1,30 @@
 import express from 'express';
 import { createStreamingProxy } from '../middleware/proxy.js';
 import * as accountService from '../services/accountService.js';
+import { config } from '../config/index.js';
+import { SubdomainExtractor } from '../utils/domain/subdomainExtractor.js';
 
 const router = express.Router();
+const subdomainExtractor = new SubdomainExtractor(config.domain.base);
 
-// Middleware para validar y preparar la cuenta
+// Middleware para validar y preparar la cuenta basado en el subdominio
 async function validateAccount(req, res, next) {
   try {
-    const { accountName } = req.params;
+    const host = req.get('host');
+    if (!host || host === config.domain.base) {
+      return next();
+    }
+
+    const accountName = subdomainExtractor.extract(host);
+    if (!accountName) {
+      return res.status(404).send('Subdominio inválido');
+    }
+
     const { accounts } = await accountService.getAccounts();
-    const account = accounts.find(acc => acc.name === decodeURIComponent(accountName));
+    const account = accounts.find(acc => acc.name === accountName);
     
     if (!account) {
       return res.status(404).send('Cuenta no encontrada');
-    }
-    
-    if (account.status !== 'Available') {
-      return res.status(403).send('La cuenta está actualmente en uso');
     }
 
     req.streamingAccount = account;
@@ -27,7 +35,7 @@ async function validateAccount(req, res, next) {
   }
 }
 
-// Ruta principal para el streaming
-router.all('/stream/:accountName*', validateAccount, createStreamingProxy);
+// Ruta para el proxy usando subdominio
+router.all('*', validateAccount, createStreamingProxy);
 
 export { router as proxyRouter };

@@ -3,19 +3,30 @@ import { adminRouter } from './admin.js';
 import { proxyRouter } from './proxy.js';
 import * as accountService from '../services/accountService.js';
 import { renderDashboard } from '../views/templates.js';
+import { config } from '../config/index.js';
 
 const router = express.Router();
 
-// Montar rutas del proxy
-router.use(proxyRouter);
+// Montar rutas de administración en el dominio principal
+router.use((req, res, next) => {
+  const host = req.get('host');
+  if (host === config.domain.base) {
+    next();
+  } else {
+    proxyRouter(req, res, next);
+  }
+});
 
-// Montar rutas de administración
 router.use('/admin', adminRouter);
 
-// Dashboard público
+// Dashboard público solo en el dominio principal
 router.get('/dashboard', async (req, res) => {
   const { accounts } = await accountService.getAccounts();
-  res.send(renderDashboard(accounts));
+  const accountsWithUrls = accounts.map(account => ({
+    ...account,
+    proxyUrl: `${config.domain.protocol}://${account.name}.${config.domain.base}`
+  }));
+  res.send(renderDashboard(accountsWithUrls));
 });
 
 // Redirección raíz al dashboard
