@@ -13,9 +13,20 @@ router.use('/stream/:accountName/*', (req, res, next) => {
   next();
 });
 
+// Ruta principal del proxy
 router.all('/stream/:accountName*', accountValidator.validateAccount.bind(accountValidator), (req, res, next) => {
-  const proxy = proxyService.createProxyMiddleware(req.streamingAccount, req.targetDomain);
-  return proxy(req, res, next);
+  try {
+    const proxy = proxyService.createProxyMiddleware(req.streamingAccount, req.targetDomain);
+    return proxy(req, res, next);
+  } catch (error) {
+    console.error('Error creating proxy:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'Proxy Error',
+        message: 'Error creating proxy middleware'
+      });
+    }
+  }
 });
 
 export { router as proxyRouter };

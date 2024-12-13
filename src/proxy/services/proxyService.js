@@ -2,79 +2,108 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import { HttpProxyAgent } from 'http-proxy-agent';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { proxyConfig } from '../config/proxyConfig.js';
-import { ProxyError } from '../errors/ProxyError.js';
-import { HeaderManager } from '../managers/HeaderManager.js';
-import { CookieManager } from '../managers/CookieManager.js';
-import { ResponseHandler } from '../handlers/ResponseHandler.js';
-import { PathRewriter } from '../utils/PathRewriter.js';
+import { proxyDefaults } from '../config/proxyDefaults.js';
+import { cookieService } from './cookieService.js';
+import { UrlRewriteService } from './urlRewriteService.js';
 
 export class ProxyService {
-  constructor() {
-    this.headerManager = new HeaderManager();
-    this.cookieManager = new CookieManager();
-    this.responseHandler = new ResponseHandler();
-    this.pathRewriter = new PathRewriter();
-  }
-
   createProxyMiddleware(account, targetDomain) {
     const proxyUrl = `http://${proxyConfig.squid.host}:${proxyConfig.squid.port}`;
     const agent = account.url.startsWith('https:') ? 
       new HttpsProxyAgent(proxyUrl) : 
       new HttpProxyAgent(proxyUrl);
 
-    const proxyOptions = {
+    const urlRewriteService = new UrlRewriteService(account);
+
+    return createProxyMiddleware({
       target: account.url,
       changeOrigin: true,
       secure: true,
+      ws: true,
       xfwd: true,
       followRedirects: true,
-      proxyTimeout: proxyConfig.timeouts.read,
-      timeout: proxyConfig.timeouts.connect,
       agent,
-      pathRewrite: (path, req) => {
-        return this.pathRewriter.rewrite(path, req);
-      },
+      ...proxyDefaults.timeouts,
+
       onProxyReq: (proxyReq, req) => {
         try {
-          if (!proxyReq.headersSent) {
-            this.headerManager.setHeaders(proxyReq, req);
-            this.cookieManager.setCookies(proxyReq, account);
-            
-            // Reescribir la URL original
+          if (!proxyReq.headersSent && proxyReq.setHeader) {
+            // Establecer headers base
+            Object.entries(proxyDefaults.headers).forEach(([key, value]) => {
+              if (!proxyReq.getHeader(key)) {
+                proxyReq.setHeader(key, value);
+              }
+            });
+
+            // Combinar cookies de la cuenta y del dispositivo
+            const accountCookies = account.cookies || {};
+            const deviceCookies = cookieService.getCookies(account.name);
+            const allCookies = { ...accountCookies, ...deviceCookies };
+
+            if (Object.keys(allCookies).length > 0) {
+              const cookieString = cookieService.serializeCookies(allCookies);
+              proxyReq.setHeader('cookie', cookieString);
+            }
+
+            // Establecer host original
             const originalUrl = new URL(account.url);
-            proxyReq.path = req.originalPath || '/';
             proxyReq.setHeader('host', originalUrl.host);
           }
         } catch (error) {
-          console.error('Error in onProxyReq:', error);
+          console.warn('Error setting proxy headers:', error.message);
         }
       },
-      onProxyRes: (proxyRes, req, res) => {
+
+      onProxyRes: async (proxyRes, req, res) => {
         try {
-          this.responseHandler.handle(proxyRes, req, res, account);
-        } catch (error) {
-          console.error('Error in onProxyRes:', error);
-          if (!res.headersSent) {
-            res.status(500).send('Error processing proxy response');
+          // Manejar cookies de respuesta
+          const setCookieHeaders = proxyRes.headers['set-cookie'];
+          if (setCookieHeaders) {
+            const cookies = Array.isArray(setCookieHeaders) ? 
+              setCookieHeaders.join('; ') : 
+              setCookieHeaders;
+            
+            const parsedCookies = cookieService.parseCookies(cookies);
+            await cookieService.storeCookies(account.name, parsedCookies);
           }
+
+          // Reescribir Location header para redirecciones
+          if (proxyRes.headers.location) {
+            proxyRes.headers.location = urlRewriteService.rewriteUrl(
+              proxyRes.headers.location,
+              req
+            );
+          }
+
+          // Copiar headers seguros
+          Object.entries(proxyRes.headers)
+            .filter(([key]) => !['content-length', 'transfer-encoding'].includes(key.toLowerCase()))
+            .forEach(([key, value]) => {
+              try {
+                res.setHeader(key, value);
+              } catch (error) {
+                console.warn(`Could not set response header ${key}:`, error.message);
+              }
+            });
+        } catch (error) {
+          console.error('Error handling proxy response:', error);
         }
       },
+
       onError: (err, req, res) => {
         console.error('Proxy error:', err);
-        this.handleProxyError(err, req, res);
-      }
-    };
+        if (!res.headersSent) {
+          res.writeHead(502, {
+            'Content-Type': 'application/json'
+          });
+          res.end(JSON.stringify({
+            error: 'Proxy Error',
+            message: err.message
+          }));
+        }
+      },
 
-    return createProxyMiddleware(proxyOptions);
-  }
-
-  handleProxyError(err, req, res) {
-    const error = new ProxyError('Proxy request failed', err);
-    if (!res.headersSent) {
-      res.status(502).json({
-        error: 'Proxy Error',
-        message: error.message
-      });
-    }
+      pathRewrite: (path, req) => urlRewriteService.rewritePath(path)
+    });
   }
 }
