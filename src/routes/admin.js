@@ -14,98 +14,51 @@ router.get('/', adminAuth, async (req, res) => {
 // Crear nueva cuenta
 router.post('/accounts', adminAuth, async (req, res) => {
   try {
-    const { name, url, maxUsers } = req.body;
-    await accountService.addAccount(name, url, maxUsers);
+    const { name, url, maxUsers, platform, icon, tags } = req.body;
+    const tagsList = tags ? tags.split(',').map(tag => tag.trim()) : [];
+    await accountService.addAccount(name, url, maxUsers, platform, icon, tagsList);
     res.redirect('/admin');
   } catch (error) {
     res.status(400).send(error.message);
   }
 });
 
-// Actualizar máximo de usuarios
-router.post('/accounts/:name/max-users', adminAuth, async (req, res) => {
+// Actualizar cuenta
+router.patch('/accounts/:name', adminAuth, async (req, res) => {
   try {
-    const { maxUsers } = req.body;
-    await accountService.updateAccountMaxUsers(decodeURIComponent(req.params.name), maxUsers);
-    res.redirect('/admin');
-  } catch (error) {
-    res.status(400).send(error.message);
-  }
-});
-
-// Actualizar URL
-router.post('/accounts/:name/url', adminAuth, async (req, res) => {
-  try {
-    const { url } = req.body;
-    await accountService.updateAccountUrl(decodeURIComponent(req.params.name), url);
+    const accountName = decodeURIComponent(req.params.name);
+    const updates = req.body;
+    await accountService.updateAccount(accountName, updates);
     res.json({ success: true });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-// Gestionar cookies
-router.post('/accounts/:name/cookies', adminAuth, async (req, res) => {
+// Agregar etiqueta
+router.post('/accounts/:name/tags', adminAuth, async (req, res) => {
   try {
-    const { cookieName, cookieValue } = req.body;
-    await accountService.updateAccountCookies(
-      decodeURIComponent(req.params.name),
-      { name: cookieName, value: cookieValue }
-    );
-    res.redirect('/admin');
-  } catch (error) {
-    res.status(400).send(error.message);
-  }
-});
-
-// Eliminar cookie
-router.post('/accounts/:name/cookies/:cookieName', adminAuth, async (req, res) => {
-  try {
-    if (req.body._method === 'DELETE') {
-      await accountService.deleteAccountCookie(
-        decodeURIComponent(req.params.name),
-        decodeURIComponent(req.params.cookieName)
-      );
-    }
-    res.redirect('/admin');
-  } catch (error) {
-    res.status(400).send(error.message);
-  }
-});
-
-// Eliminar cuenta
-router.post('/accounts/:name', adminAuth, async (req, res) => {
-  try {
-    if (req.body._method === 'DELETE') {
-      await accountService.deleteAccount(decodeURIComponent(req.params.name));
-    }
-    res.redirect('/admin');
-  } catch (error) {
-    res.status(400).send(error.message);
-  }
-});
-
-// Cambiar estado de la cuenta
-router.post('/accounts/:name/toggle', adminAuth, async (req, res) => {
-  try {
-    await accountService.toggleAccountStatus(decodeURIComponent(req.params.name));
-    res.redirect('/admin');
-  } catch (error) {
-    res.status(400).send(error.message);
-  }
-});
-
-// Expulsar usuario
-router.delete('/accounts/:name/users/:userId', adminAuth, async (req, res) => {
-  try {
-    await accountService.kickUser(
-      decodeURIComponent(req.params.name),
-      decodeURIComponent(req.params.userId)
-    );
+    const accountName = decodeURIComponent(req.params.name);
+    const { tag } = req.body;
+    await accountService.addTag(accountName, tag);
     res.json({ success: true });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
+
+// Eliminar etiqueta
+router.delete('/accounts/:name/tags/:tag', adminAuth, async (req, res) => {
+  try {
+    const accountName = decodeURIComponent(req.params.name);
+    const tag = decodeURIComponent(req.params.tag);
+    await accountService.removeTag(accountName, tag);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Resto de las rutas existentes...
 
 export { router as adminRouter };

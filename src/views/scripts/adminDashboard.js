@@ -4,7 +4,7 @@ export const adminDashboardScript = `
   const maxReconnectAttempts = 5;
   const reconnectDelay = 5000;
 
-  // Función para conectar WebSocket
+  // WebSocket setup
   function connectWebSocket() {
     ws = new WebSocket(\`ws://\${window.location.host}/updates\`);
     
@@ -44,53 +44,104 @@ export const adminDashboardScript = `
     };
   }
 
-  // Función para actualizar la URL de una cuenta
+  // Account management functions
   async function updateAccountUrl(accountName, newUrl) {
-    try {
-      const response = await fetch(\`/admin/accounts/\${encodeURIComponent(accountName)}/url\`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ url: newUrl })
-      });
-      
-      if (!response.ok) throw new Error('Error actualizando URL');
-      
-      const data = await response.json();
-      if (data.success) {
-        showNotification('URL actualizada correctamente', 'success');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      showNotification('Error al actualizar la URL', 'error');
-    }
+    await updateAccount(accountName, { url: newUrl });
   }
 
-  // Función para actualizar el máximo de usuarios
   async function updateMaxUsers(accountName, maxUsers) {
+    await updateAccount(accountName, { maxUsers: parseInt(maxUsers, 10) });
+  }
+
+  async function updatePlatform(accountName, platform) {
+    await updateAccount(accountName, { platform });
+  }
+
+  async function updateIcon(accountName, icon) {
+    await updateAccount(accountName, { icon });
+  }
+
+  async function updateAccount(accountName, data) {
     try {
-      const response = await fetch(\`/admin/accounts/\${encodeURIComponent(accountName)}/max-users\`, {
+      const response = await fetch(\`/admin/accounts/\${encodeURIComponent(accountName)}\`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) throw new Error('Error updating account');
+      
+      const result = await response.json();
+      if (result.success) {
+        showNotification('Cuenta actualizada correctamente', 'success');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      showNotification('Error al actualizar la cuenta', 'error');
+    }
+  }
+
+  // Tag management
+  function focusTagInput(container) {
+    container.querySelector('.tag-input').focus();
+  }
+
+  async function handleTagInput(event, accountName) {
+    if (event.key === 'Enter' || event.key === ',') {
+      event.preventDefault();
+      const input = event.target;
+      const tag = input.value.trim();
+      
+      if (tag && tag.length > 0) {
+        await addTag(accountName, tag);
+        input.value = '';
+      }
+    }
+  }
+
+  async function addTag(accountName, tag) {
+    try {
+      const response = await fetch(\`/admin/accounts/\${encodeURIComponent(accountName)}/tags\`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ maxUsers: parseInt(maxUsers, 10) })
+        body: JSON.stringify({ tag })
       });
       
-      if (!response.ok) throw new Error('Error actualizando máximo de usuarios');
+      if (!response.ok) throw new Error('Error adding tag');
       
-      const data = await response.json();
-      if (data.success) {
-        showNotification('Máximo de usuarios actualizado correctamente', 'success');
+      const result = await response.json();
+      if (result.success) {
+        showNotification('Etiqueta agregada correctamente', 'success');
       }
     } catch (error) {
       console.error('Error:', error);
-      showNotification('Error al actualizar el máximo de usuarios', 'error');
+      showNotification('Error al agregar la etiqueta', 'error');
     }
   }
 
-  // Sistema de notificaciones
+  async function removeTag(accountName, tag) {
+    try {
+      const response = await fetch(\`/admin/accounts/\${encodeURIComponent(accountName)}/tags/\${encodeURIComponent(tag)}\`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) throw new Error('Error removing tag');
+      
+      const result = await response.json();
+      if (result.success) {
+        showNotification('Etiqueta eliminada correctamente', 'success');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      showNotification('Error al eliminar la etiqueta', 'error');
+    }
+  }
+
+  // Notification system
   function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     notification.className = \`notification \${type}\`;
@@ -138,14 +189,6 @@ export const adminDashboardScript = `
     }, 3000);
   }
 
-  // Función para actualizar el dashboard
-  function updateAdminDashboard(accounts) {
-    const accountsGrid = document.querySelector('.accounts-grid');
-    if (!accountsGrid) return;
-    
-    accountsGrid.innerHTML = accounts.map(account => renderAdminAccountCard(account)).join('');
-  }
-
-  // Iniciar conexión WebSocket cuando el documento esté listo
+  // Initialize WebSocket when document is ready
   document.addEventListener('DOMContentLoaded', connectWebSocket);
 `;

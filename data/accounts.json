@@ -6,6 +6,9 @@
       "status": "Available",
       "maxUsers": 4,
       "currentUsers": [],
+      "platform": "netflix",
+      "icon": "🎬",
+      "tags": ["streaming", "movies"],
       "stats": {
         "totalAccesses": 0,
         "lastAccess": null,
@@ -17,6 +20,9 @@
       "url": "https://www.netflix.com",
       "status": "In Use",
       "maxUsers": 2,
+      "platform": "netflix",
+      "icon": "🎬",
+      "tags": ["streaming", "movies"],
       "currentUsers": [],
       "stats": {
         "totalAccesses": 0,
@@ -29,6 +35,9 @@
       "url": "https://www.hbo.com",
       "status": "Available",
       "maxUsers": 3,
+      "platform": "hbo",
+      "icon": "📺",
+      "tags": ["streaming", "series"],
       "currentUsers": [],
       "stats": {
         "totalAccesses": 0,

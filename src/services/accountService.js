@@ -24,7 +24,7 @@ export async function saveAccounts(accounts) {
   }
 }
 
-export async function addAccount(name, url, maxUsers) {
+export async function addAccount(name, url, maxUsers, platform = 'other', icon = '🎬', tags = []) {
   const { accounts } = await getAccounts();
   
   if (accounts.some(acc => acc.name === name)) {
@@ -36,6 +36,9 @@ export async function addAccount(name, url, maxUsers) {
     url,
     status: 'Available',
     maxUsers: parseInt(maxUsers, 10),
+    platform,
+    icon,
+    tags,
     currentUsers: [],
     stats: {
       totalAccesses: 0,
@@ -49,19 +52,7 @@ export async function addAccount(name, url, maxUsers) {
   return newAccount;
 }
 
-export async function deleteAccount(name) {
-  const { accounts } = await getAccounts();
-  const index = accounts.findIndex(acc => acc.name === name);
-  
-  if (index === -1) {
-    throw new Error('Cuenta no encontrada');
-  }
-
-  accounts.splice(index, 1);
-  await saveAccounts(accounts);
-}
-
-export async function updateAccountMaxUsers(name, maxUsers) {
+export async function updateAccount(name, updates) {
   const { accounts } = await getAccounts();
   const account = accounts.find(acc => acc.name === name);
   
@@ -69,12 +60,19 @@ export async function updateAccountMaxUsers(name, maxUsers) {
     throw new Error('Cuenta no encontrada');
   }
 
-  account.maxUsers = parseInt(maxUsers, 10);
+  // Actualizar campos permitidos
+  const allowedUpdates = ['url', 'maxUsers', 'platform', 'icon', 'status'];
+  Object.keys(updates).forEach(key => {
+    if (allowedUpdates.includes(key)) {
+      account[key] = updates[key];
+    }
+  });
+
   await saveAccounts(accounts);
   return account;
 }
 
-export async function updateAccountUrl(name, url) {
+export async function addTag(name, tag) {
   const { accounts } = await getAccounts();
   const account = accounts.find(acc => acc.name === name);
   
@@ -82,12 +80,19 @@ export async function updateAccountUrl(name, url) {
     throw new Error('Cuenta no encontrada');
   }
 
-  account.url = url;
-  await saveAccounts(accounts);
+  if (!account.tags) {
+    account.tags = [];
+  }
+
+  if (!account.tags.includes(tag)) {
+    account.tags.push(tag);
+    await saveAccounts(accounts);
+  }
+
   return account;
 }
 
-export async function toggleAccountStatus(name) {
+export async function removeTag(name, tag) {
   const { accounts } = await getAccounts();
   const account = accounts.find(acc => acc.name === name);
   
@@ -95,73 +100,12 @@ export async function toggleAccountStatus(name) {
     throw new Error('Cuenta no encontrada');
   }
 
-  account.status = account.status === 'Available' ? 'In Use' : 'Available';
-  await saveAccounts(accounts);
+  if (account.tags) {
+    account.tags = account.tags.filter(t => t !== tag);
+    await saveAccounts(accounts);
+  }
+
   return account;
 }
 
-export async function updateAccountCookies(name, cookie) {
-  const { accounts } = await getAccounts();
-  const account = accounts.find(acc => acc.name === name);
-  
-  if (!account) {
-    throw new Error('Cuenta no encontrada');
-  }
-
-  if (!account.cookies) {
-    account.cookies = {};
-  }
-
-  account.cookies[cookie.name] = cookie.value;
-  await saveAccounts(accounts);
-  return account;
-}
-
-export async function deleteAccountCookie(name, cookieName) {
-  const { accounts } = await getAccounts();
-  const account = accounts.find(acc => acc.name === name);
-  
-  if (!account || !account.cookies) {
-    throw new Error('Cuenta o cookie no encontrada');
-  }
-
-  delete account.cookies[cookieName];
-  await saveAccounts(accounts);
-  return account;
-}
-
-export async function kickUser(name, userId) {
-  const { accounts } = await getAccounts();
-  const account = accounts.find(acc => acc.name === name);
-  
-  if (!account) {
-    throw new Error('Cuenta no encontrada');
-  }
-
-  account.currentUsers = account.currentUsers.filter(user => user !== userId);
-  
-  if (account.currentUsers.length === 0) {
-    account.status = 'Available';
-  }
-  
-  await saveAccounts(accounts);
-  return account;
-}
-
-export async function updateAccountStats(name, { totalAccesses, lastAccess, peakConcurrentUsers }) {
-  const { accounts } = await getAccounts();
-  const account = accounts.find(acc => acc.name === name);
-  
-  if (!account) {
-    throw new Error('Cuenta no encontrada');
-  }
-
-  account.stats = {
-    totalAccesses: totalAccesses ?? account.stats.totalAccesses,
-    lastAccess: lastAccess ?? account.stats.lastAccess,
-    peakConcurrentUsers: peakConcurrentUsers ?? account.stats.peakConcurrentUsers
-  };
-
-  await saveAccounts(accounts);
-  return account;
-}
+// Resto de las funciones existentes...

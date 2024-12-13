@@ -11,8 +11,17 @@ export function renderAccountCard(account) {
   const availableSlots = maxUsers - usersCount;
   
   return `
-    <div class="account ${statusClass}">
+    <div class="account ${statusClass}" data-platform="${account.platform || ''}">
+      <div class="account-icon">${account.icon || '🎬'}</div>
+      <div class="platform-badge">${account.platform || 'Unknown'}</div>
       <h3>${account.name || 'Sin nombre'}</h3>
+      
+      <div class="tags">
+        ${(account.tags || []).map(tag => `
+          <span class="tag">${tag}</span>
+        `).join('')}
+      </div>
+
       <div class="status-badge status-${statusClass}">
         ${status}
       </div>

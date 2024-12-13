@@ -34,11 +34,21 @@ export const adminDashboardStyles = `
 
   .account-title {
     flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .account-icon {
+    font-size: 2rem;
+    background: linear-gradient(135deg, #60a5fa, #a855f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 
   .account-settings {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
     background-color: var(--bg-secondary);
     padding: 1.25rem;
@@ -67,81 +77,95 @@ export const adminDashboardStyles = `
     min-width: 0;
   }
 
-  .stats-section {
-    background-color: var(--bg-secondary);
-    border-radius: 0.75rem;
-    padding: 1.25rem;
-  }
-
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
-  }
-
-  .stat-item {
+  .tags-input {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.5rem;
     background-color: var(--bg-primary);
-    padding: 1rem;
-    border-radius: 0.5rem;
     border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    min-height: 42px;
   }
 
-  .stat-label {
-    display: block;
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    margin-bottom: 0.5rem;
+  .tag {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background-color: var(--accent);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
   }
 
-  .stat-value {
-    display: block;
+  .tag button {
+    background: none;
+    border: none;
+    color: white;
+    padding: 0;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .tag-input {
+    background: none;
+    border: none;
     color: var(--text-primary);
-    font-size: 1.125rem;
-    font-weight: 600;
+    padding: 0;
+    margin: 0;
+    min-width: 60px;
+    flex: 1;
   }
 
-  .icon-button {
-    width: 36px;
-    height: 36px;
+  .tag-input:focus {
+    outline: none;
+  }
+
+  .platform-select {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    width: 100%;
+  }
+
+  .platform-select option {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+  }
+
+  .icon-select {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .icon-option {
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: none;
+    font-size: 1.5rem;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
     border-radius: 0.5rem;
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
     cursor: pointer;
     transition: all 0.2s ease;
   }
 
-  .icon-button:hover {
-    transform: translateY(-2px);
-  }
-
-  .icon-button.success:hover {
-    background-color: var(--success);
-  }
-
-  .icon-button.warning:hover {
-    background-color: #f59e0b;
-  }
-
-  .icon-button.danger:hover {
-    background-color: var(--error);
-  }
-
-  .inline-form {
-    display: inline-block;
-    margin: 0 0.25rem;
+  .icon-option:hover,
+  .icon-option.selected {
+    background-color: var(--accent);
+    border-color: var(--accent);
   }
 
   @media (max-width: 768px) {
     .account-settings {
-      grid-template-columns: 1fr;
-    }
-
-    .stats-grid {
       grid-template-columns: 1fr;
     }
   }

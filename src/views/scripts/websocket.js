@@ -2,19 +2,37 @@ export const websocketScript = `
   document.addEventListener('DOMContentLoaded', () => {
     const ws = new WebSocket(\`ws://\${window.location.host}/updates\`);
     const accountsGrid = document.querySelector('.accounts-grid');
+    let currentFilter = 'all';
     
+    function filterAccounts() {
+      const accounts = Array.from(accountsGrid.children);
+      accounts.forEach(account => {
+        const platform = account.dataset.platform;
+        account.style.display = 
+          currentFilter === 'all' || platform === currentFilter ? '' : 'none';
+      });
+    }
+
+    // Configurar filtros de plataforma
+    document.querySelector('.filters').addEventListener('click', (e) => {
+      if (e.target.classList.contains('filter-button')) {
+        currentFilter = e.target.dataset.platform;
+        
+        // Actualizar botones activos
+        document.querySelectorAll('.filter-button').forEach(btn => {
+          btn.classList.toggle('active', btn === e.target);
+        });
+        
+        filterAccounts();
+      }
+    });
+
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
         if (data.type === 'accountsUpdate' && Array.isArray(data.accounts)) {
-          const accountElements = data.accounts.map(account => {
-            const template = document.createElement('template');
-            template.innerHTML = renderAccountCard(account);
-            return template.content.firstElementChild;
-          });
-          
-          accountsGrid.innerHTML = '';
-          accountElements.forEach(element => accountsGrid.appendChild(element));
+          accountsGrid.innerHTML = data.accounts.map(account => renderAccountCard(account)).join('');
+          filterAccounts();
         }
       } catch (error) {
         console.error('Error processing WebSocket message:', error);
@@ -44,8 +62,17 @@ export const websocketScript = `
     const availableSlots = maxUsers - usersCount;
     
     return \`
-      <div class="account \${statusClass}">
+      <div class="account \${statusClass}" data-platform="\${account.platform || ''}">
+        <div class="account-icon">\${account.icon || '🎬'}</div>
+        <div class="platform-badge">\${account.platform || 'Unknown'}</div>
         <h3>\${account.name || 'Sin nombre'}</h3>
+        
+        <div class="tags">
+          \${(account.tags || []).map(tag => \`
+            <span class="tag">\${tag}</span>
+          \`).join('')}
+        </div>
+
         <div class="status-badge status-\${statusClass}">
           \${status}
         </div>
