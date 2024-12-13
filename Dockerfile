@@ -1,6 +1,6 @@
 FROM node:18-alpine
 
-# Instalar dependencias necesarias para Playwright
+# Instalar dependencias necesarias para Playwright y Chrome
 RUN apk add --no-cache \
     chromium \
     nss \
@@ -10,7 +10,17 @@ RUN apk add --no-cache \
     ca-certificates \
     ttf-freefont \
     python3 \
-    py3-pip
+    py3-pip \
+    build-base \
+    g++ \
+    jpeg-dev \
+    zlib-dev \
+    libx11-dev \
+    libxcomposite-dev \
+    libxdamage-dev \
+    libxi-dev \
+    libxtst-dev \
+    libc6-compat
 
 # Configurar variables de entorno para Playwright
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
@@ -21,6 +31,10 @@ WORKDIR /app
 # Copiar archivos de la aplicación
 COPY package*.json ./
 RUN npm install
+
+# Crear directorio para el caché de Playwright
+RUN mkdir -p /root/.cache/ms-playwright && \
+    chown -R node:node /root/.cache/ms-playwright
 
 COPY . .
 
