@@ -5,7 +5,7 @@ export const platformIcons = {
   prime: '<img src="https://www.primevideo.com/favicon.ico" alt="Prime Video" class="platform-icon">',
   spotify: '<img src="https://www.spotify.com/favicon.ico" alt="Spotify" class="platform-icon">',
   youtube: '<img src="https://www.youtube.com/favicon.ico" alt="YouTube" class="platform-icon">',
-  default: '<img src="https://i.ibb.co/vVTrtdH/Icono-video.png" alt="Default" class="platform-icon">'
+  default: '🎬'
 };
 
 export function getPlatformIcon(platform) {
