@@ -14,15 +14,39 @@ services:
       - NODE_ENV=production
       - ADMIN_USER=admin
       - ADMIN_PASSWORD=secret
+    depends_on:
+      - squid
     restart: unless-stopped
 
   nginx:
     image: nginx:alpine
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
     depends_on:
       - proxy
+      - squid
     restart: unless-stopped
+
+  squid:
+    build:
+      context: .
+      dockerfile: Dockerfile.squid
+    volumes:
+      - ./squid/squid.conf:/etc/squid/squid.conf:ro
+      - squid_cache:/var/spool/squid
+      - ssl_db:/var/lib/ssl_db
+    environment:
+      - PROXY_USER=arturojkl
+      - PROXY_PASS=HQKxDbtCiC
+    ports:
+      - "3128:3128"
+      - "3129:3129"
+    restart: unless-stopped
+
+volumes:
+  squid_cache:
+  ssl_db:
