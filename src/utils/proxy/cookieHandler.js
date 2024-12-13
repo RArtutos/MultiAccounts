@@ -7,6 +7,8 @@ export class CookieHandler {
 
   getAccountCookies() {
     if (!this.account.cookies) return '';
+    
+    // Convertir cookies del objeto a string
     return Object.entries(this.account.cookies)
       .map(([name, value]) => `${name}=${value}`)
       .join('; ');
@@ -14,13 +16,23 @@ export class CookieHandler {
 
   transformCookies(cookies) {
     if (!cookies) return [];
+    
+    // Parsear y transformar cookies
     return cookies.split(';')
+      .map(cookie => cookie.trim())
+      .filter(Boolean)
       .map(cookie => {
-        const parsed = parseCookie(cookie.trim());
-        return Object.entries(parsed)
-          .map(([name, value]) => `${name}=${value}`)
-          .join('; ');
-      });
+        try {
+          const parsed = parseCookie(cookie);
+          return Object.entries(parsed)
+            .map(([name, value]) => `${name}=${value}`)
+            .join('; ');
+        } catch (error) {
+          console.error('Error parsing cookie:', error);
+          return cookie;
+        }
+      })
+      .filter(Boolean);
   }
 
   injectAccountCookies(headers) {
@@ -28,10 +40,11 @@ export class CookieHandler {
     if (!accountCookies) return headers;
 
     const existingCookies = headers['cookie'] || '';
-    headers['cookie'] = existingCookies ? 
+    const allCookies = existingCookies ? 
       `${existingCookies}; ${accountCookies}` : 
       accountCookies;
     
+    headers['cookie'] = allCookies;
     return headers;
   }
 }

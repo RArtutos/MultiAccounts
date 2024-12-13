@@ -37,9 +37,10 @@ export async function addAccount(name, url, maxUsers, platform, icon, tags = [])
     status: 'Available',
     maxUsers: parseInt(maxUsers, 10),
     platform,
-    icon,
+    icon: icon || 'https://i.ibb.co/vVTrtdH/Icono-video.png',
     tags,
     currentUsers: [],
+    cookies: {},
     stats: {
       totalAccesses: 0,
       lastAccess: null,
@@ -74,5 +75,38 @@ export async function toggleAccountStatus(name) {
   
   account.status = account.status === 'Available' ? 'Blocked' : 'Available';
   await saveAccounts(accounts);
+  return account;
+}
+
+export async function addCookie(accountName, cookieName, cookieValue) {
+  const { accounts } = await getAccounts();
+  const account = accounts.find(acc => acc.name === accountName);
+  
+  if (!account) {
+    throw new Error('Account not found');
+  }
+
+  if (!account.cookies) {
+    account.cookies = {};
+  }
+
+  account.cookies[cookieName] = cookieValue;
+  await saveAccounts(accounts);
+  return account;
+}
+
+export async function removeCookie(accountName, cookieName) {
+  const { accounts } = await getAccounts();
+  const account = accounts.find(acc => acc.name === accountName);
+  
+  if (!account) {
+    throw new Error('Account not found');
+  }
+
+  if (account.cookies && account.cookies[cookieName]) {
+    delete account.cookies[cookieName];
+    await saveAccounts(accounts);
+  }
+
   return account;
 }
