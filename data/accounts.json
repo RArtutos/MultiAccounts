@@ -1,0 +1,40 @@
+{
+  "accounts": [
+    {
+      "name": "Netflix Account 1",
+      "url": "https://www.netflix.com",
+      "status": "Available",
+      "maxUsers": 4,
+      "currentUsers": [],
+      "stats": {
+        "totalAccesses": 0,
+        "lastAccess": null,
+        "peakConcurrentUsers": 0
+      }
+    },
+    {
+      "name": "Netflix Account 2",
+      "url": "https://www.netflix.com",
+      "status": "In Use",
+      "maxUsers": 2,
+      "currentUsers": [],
+      "stats": {
+        "totalAccesses": 0,
+        "lastAccess": null,
+        "peakConcurrentUsers": 0
+      }
+    },
+    {
+      "name": "HBO Account 1",
+      "url": "https://www.hbo.com",
+      "status": "Available",
+      "maxUsers": 3,
+      "currentUsers": [],
+      "stats": {
+        "totalAccesses": 0,
+        "lastAccess": null,
+        "peakConcurrentUsers": 0
+      }
+    }
+  ]
+}

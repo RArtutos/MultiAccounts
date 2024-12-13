@@ -1,8 +1,5 @@
 FROM node:18-alpine
 
-# Install squid client for testing connection
-RUN apk add --no-cache curl
-
 WORKDIR /app
 
 COPY package*.json ./
