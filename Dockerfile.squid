@@ -1,19 +1,21 @@
 FROM ubuntu/squid:latest
 
-# Create cache directory and set permissions
-RUN mkdir -p /var/spool/squid && \
-    chown -R proxy:proxy /var/spool/squid && \
-    chmod 755 /var/spool/squid && \
-    mkdir -p /var/run/squid && \
-    chown -R proxy:proxy /var/run/squid && \
-    chmod 755 /var/run/squid && \
-    mkdir -p /var/log/squid && \
-    chown -R proxy:proxy /var/log/squid && \
-    chmod 755 /var/log/squid
+# Install Python and required packages
+RUN apt-get update && \
+    apt-get install -y python3 && \
+    rm -rf /var/lib/apt/lists/*
 
-USER proxy
+# Create directories and set permissions
+RUN mkdir -p /usr/local/squid/rewriter /var/log/squid && \
+    chown -R proxy:proxy /usr/local/squid/rewriter /var/log/squid
 
-# Initialize cache
-RUN squid -z
+# Copy rewriter script
+COPY squid/rewriter/main.py /usr/local/squid/rewriter/
+RUN chmod +x /usr/local/squid/rewriter/main.py && \
+    chown proxy:proxy /usr/local/squid/rewriter/main.py
 
+# Set working directory
+WORKDIR /usr/local/squid
+
+# Set default command
 CMD ["squid", "-N", "-d1"]

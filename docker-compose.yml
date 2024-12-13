@@ -14,26 +14,15 @@ services:
       - NODE_ENV=production
       - ADMIN_USER=admin
       - ADMIN_PASSWORD=secret
-      - DOMAIN=artutos.us.kg
     restart: unless-stopped
 
   nginx:
     image: nginx:alpine
     ports:
       - "80:80"
-      - "443:443"
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
     depends_on:
       - proxy
     restart: unless-stopped
-
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    command: certonly --webroot -w /var/www/certbot --email admin@artutos.us.kg -d artutos.us.kg -d *.artutos.us.kg --agree-tos --force-renewal
