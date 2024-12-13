@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
-"""Main entry point for URL rewriter."""
 
 import sys
-from .logger import init_logger
-from .url_transformer import transform_url
+import re
+from urllib.parse import urlparse, quote
 
-logger = init_logger()
+# Static file patterns
+STATIC_FILE_EXTENSIONS = (
+    'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'css', 'js',
+    'woff', 'woff2', 'ttf', 'eot', 'ico', 'mp4', 'webm'
+)
+
+def is_static_resource(url):
+    """Check if URL points to a static resource."""
+    return bool(re.search(r'\.(' + '|'.join(STATIC_FILE_EXTENSIONS) + r')(\?.*)?$', url, re.I))
 
 def process_line(line):
     """Process a single input line."""
@@ -16,10 +23,21 @@ def process_line(line):
 
         channel = parts[0]
         url = parts[1]
-        return transform_url(url, channel)
+        
+        # No rewrite static resources
+        if is_static_resource(url):
+            return url
+
+        # Extract account name from URL if present
+        match = re.search(r'/stream/([^/]+)/', url)
+        if match:
+            account = quote(match.group(1))
+            return f"/stream/{account}{url}"
+            
+        return url
 
     except Exception as e:
-        logger.error(f"Error processing line: {str(e)}")
+        sys.stderr.write(f"Error processing line: {str(e)}\n")
         return None
 
 def main():
@@ -35,7 +53,7 @@ def main():
             sys.stdout.flush()
 
         except Exception as e:
-            logger.error(f"Fatal error: {str(e)}")
+            sys.stderr.write(f"Fatal error: {str(e)}\n")
             break
 
 if __name__ == "__main__":

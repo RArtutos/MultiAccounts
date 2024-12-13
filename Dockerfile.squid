@@ -2,18 +2,20 @@ FROM ubuntu/squid:latest
 
 # Install Python and required packages
 RUN apt-get update && \
-    apt-get install -y python3 python3-pip && \
+    apt-get install -y python3 && \
     rm -rf /var/lib/apt/lists/*
 
-# Create directories
+# Create directories and set permissions
 RUN mkdir -p /usr/local/squid/rewriter /var/log/squid && \
     chown -R proxy:proxy /usr/local/squid/rewriter /var/log/squid
 
+# Copy rewriter script
+COPY squid/rewriter/main.py /usr/local/squid/rewriter/
+RUN chmod +x /usr/local/squid/rewriter/main.py && \
+    chown proxy:proxy /usr/local/squid/rewriter/main.py
+
 # Set working directory
 WORKDIR /usr/local/squid
-
-# Make rewriter executable
-RUN chmod +x /usr/local/squid/rewriter/main.py
 
 # Set default command
 CMD ["squid", "-N", "-d1"]
