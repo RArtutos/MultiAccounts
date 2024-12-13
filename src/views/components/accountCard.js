@@ -1,3 +1,5 @@
+import { getPlatformIcon } from '../../utils/platformIcons.js';
+
 export function renderAccountCard(account) {
   if (!account) {
     return '<div class="account">Error: Cuenta no válida</div>';
@@ -12,8 +14,13 @@ export function renderAccountCard(account) {
   
   return `
     <div class="account ${statusClass}" data-platform="${account.platform || ''}">
-      <div class="account-icon">${account.icon || '🎬'}</div>
-      <div class="platform-badge">${account.platform || 'Unknown'}</div>
+      <div class="account-header">
+        <div class="platform-icon">
+          ${getPlatformIcon(account.platform)}
+        </div>
+        <div class="platform-badge">${account.platform || 'Unknown'}</div>
+      </div>
+      
       <h3>${account.name || 'Sin nombre'}</h3>
       
       <div class="tags">

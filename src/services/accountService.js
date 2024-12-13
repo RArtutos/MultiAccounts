@@ -24,7 +24,7 @@ export async function saveAccounts(accounts) {
   }
 }
 
-export async function addAccount(name, url, maxUsers, platform = 'other', icon = '🎬', tags = []) {
+export async function addAccount(name, url, maxUsers, platform, icon, tags = []) {
   const { accounts } = await getAccounts();
   
   if (accounts.some(acc => acc.name === name)) {
@@ -52,60 +52,27 @@ export async function addAccount(name, url, maxUsers, platform = 'other', icon =
   return newAccount;
 }
 
-export async function updateAccount(name, updates) {
+export async function deleteAccount(name) {
+  const { accounts } = await getAccounts();
+  const filteredAccounts = accounts.filter(acc => acc.name !== name);
+  
+  if (filteredAccounts.length === accounts.length) {
+    throw new Error('Account not found');
+  }
+  
+  await saveAccounts(filteredAccounts);
+  return true;
+}
+
+export async function toggleAccountStatus(name) {
   const { accounts } = await getAccounts();
   const account = accounts.find(acc => acc.name === name);
   
   if (!account) {
-    throw new Error('Cuenta no encontrada');
+    throw new Error('Account not found');
   }
-
-  // Actualizar campos permitidos
-  const allowedUpdates = ['url', 'maxUsers', 'platform', 'icon', 'status'];
-  Object.keys(updates).forEach(key => {
-    if (allowedUpdates.includes(key)) {
-      account[key] = updates[key];
-    }
-  });
-
+  
+  account.status = account.status === 'Available' ? 'Blocked' : 'Available';
   await saveAccounts(accounts);
   return account;
 }
-
-export async function addTag(name, tag) {
-  const { accounts } = await getAccounts();
-  const account = accounts.find(acc => acc.name === name);
-  
-  if (!account) {
-    throw new Error('Cuenta no encontrada');
-  }
-
-  if (!account.tags) {
-    account.tags = [];
-  }
-
-  if (!account.tags.includes(tag)) {
-    account.tags.push(tag);
-    await saveAccounts(accounts);
-  }
-
-  return account;
-}
-
-export async function removeTag(name, tag) {
-  const { accounts } = await getAccounts();
-  const account = accounts.find(acc => acc.name === name);
-  
-  if (!account) {
-    throw new Error('Cuenta no encontrada');
-  }
-
-  if (account.tags) {
-    account.tags = account.tags.filter(t => t !== tag);
-    await saveAccounts(accounts);
-  }
-
-  return account;
-}
-
-// Resto de las funciones existentes...

@@ -23,42 +23,26 @@ router.post('/accounts', adminAuth, async (req, res) => {
   }
 });
 
-// Actualizar cuenta
-router.patch('/accounts/:name', adminAuth, async (req, res) => {
+// Eliminar cuenta
+router.delete('/accounts/:name', adminAuth, async (req, res) => {
   try {
     const accountName = decodeURIComponent(req.params.name);
-    const updates = req.body;
-    await accountService.updateAccount(accountName, updates);
+    await accountService.deleteAccount(accountName);
     res.json({ success: true });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-// Agregar etiqueta
-router.post('/accounts/:name/tags', adminAuth, async (req, res) => {
+// Toggle account status
+router.post('/accounts/:name/toggle', adminAuth, async (req, res) => {
   try {
     const accountName = decodeURIComponent(req.params.name);
-    const { tag } = req.body;
-    await accountService.addTag(accountName, tag);
+    await accountService.toggleAccountStatus(accountName);
     res.json({ success: true });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
-
-// Eliminar etiqueta
-router.delete('/accounts/:name/tags/:tag', adminAuth, async (req, res) => {
-  try {
-    const accountName = decodeURIComponent(req.params.name);
-    const tag = decodeURIComponent(req.params.tag);
-    await accountService.removeTag(accountName, tag);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// Resto de las rutas existentes...
 
 export { router as adminRouter };
