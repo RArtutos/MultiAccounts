@@ -14,27 +14,26 @@ services:
       - NODE_ENV=production
       - ADMIN_USER=admin
       - ADMIN_PASSWORD=secret
+      - DOMAIN=artutos.us.kg
     restart: unless-stopped
 
-  squid:
-    build:
-      context: .
-      dockerfile: Dockerfile.squid
+  nginx:
+    image: nginx:alpine
     ports:
-      - "3128:3128"
+      - "80:80"
+      - "443:443"
     volumes:
-      - ./squid/squid.conf:/etc/squid/squid.conf:ro
-      - squid_cache:/var/spool/squid
-      - squid_logs:/var/log/squid
-      - squid_run:/var/run/squid
-    environment:
-      - TZ=UTC
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
     depends_on:
       - proxy
     restart: unless-stopped
-    user: proxy
 
-volumes:
-  squid_cache:
-  squid_logs:
-  squid_run:
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    command: certonly --webroot -w /var/www/certbot --email admin@artutos.us.kg -d artutos.us.kg -d *.artutos.us.kg --agree-tos --force-renewal
