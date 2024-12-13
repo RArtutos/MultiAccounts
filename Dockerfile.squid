@@ -1,48 +1,21 @@
 FROM ubuntu/squid:latest
 
-# Install required packages
+# Install Python and required packages
 RUN apt-get update && \
-    apt-get install -y \
-    apache2-utils \
-    openssl \
-    python3 \
-    squid-openssl \
-    && rm -rf /var/lib/apt/lists/*
+    apt-get install -y python3 && \
+    rm -rf /var/lib/apt/lists/*
 
-# Create necessary directories
-RUN mkdir -p /etc/squid/ssl /var/lib/ssl_db /usr/local/squid/rewriter /etc/squid/conf.d
-
-# Generate SSL certificate
-RUN openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 \
-    -keyout /etc/squid/ssl/squid.key \
-    -out /etc/squid/ssl/squid.crt \
-    -subj "/C=MX/ST=CDMX/L=MexicoCity/O=Streaming/CN=proxy.streaming"
-
-# Create password file
-RUN touch /etc/squid/passwd && \
-    htpasswd -b -c /etc/squid/passwd arturojkl HQKxDbtCiC
-
-# Set permissions
-RUN chown -R proxy:proxy /etc/squid/ssl /var/lib/ssl_db && \
-    chmod 600 /etc/squid/ssl/squid.key
-
-# Copy configuration files
-COPY squid/conf.d/ /etc/squid/conf.d/
-COPY squid/squid.conf /etc/squid/squid.conf
+# Create directories and set permissions
+RUN mkdir -p /usr/local/squid/rewriter /var/log/squid && \
+    chown -R proxy:proxy /usr/local/squid/rewriter /var/log/squid
 
 # Copy rewriter script
 COPY squid/rewriter/main.py /usr/local/squid/rewriter/
-RUN chmod +x /usr/local/squid/rewriter/main.py
+RUN chmod +x /usr/local/squid/rewriter/main.py && \
+    chown proxy:proxy /usr/local/squid/rewriter/main.py
 
-# Initialize SSL database
-RUN /usr/lib/squid/security_file_certgen -c -s /var/lib/ssl_db -M 4MB || true
+# Set working directory
+WORKDIR /usr/local/squid
 
-# Set proper permissions for config files
-RUN chown -R proxy:proxy /etc/squid/conf.d && \
-    chmod -R 644 /etc/squid/conf.d/*.conf /etc/squid/squid.conf
-
-# Expose ports
-EXPOSE 3128 3129
-
-# Default command
-CMD ["squid", "-NYCd", "1"]
+# Set default command
+CMD ["squid", "-N", "-d1"]
