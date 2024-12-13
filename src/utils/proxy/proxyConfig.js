@@ -1,76 +1,48 @@
-import { ProxyManager } from './proxyManager.js';
+import { CookieHandler } from './handlers/cookieHandler.js';
 import { HeaderHandler } from './handlers/headerHandler.js';
-import { cookieMiddleware } from '../../middleware/cookieMiddleware.js';
+import { ProxyManager } from './proxyManager.js';
 
 const proxyManager = new ProxyManager();
 
 export function createProxyConfig(account, req, targetDomain) {
+  const cookieHandler = new CookieHandler(account, targetDomain);
   const headerHandler = new HeaderHandler(targetDomain);
-  const cookieHandler = cookieMiddleware(account);
 
   return {
     target: account.url,
     changeOrigin: true,
     secure: true,
     followRedirects: true,
-    autoRewrite: true,
     ws: true,
     xfwd: true,
     agent: proxyManager.getAgent(),
-    
-    // Cookie handling
-    cookieDomainRewrite: {
-      '*': req.get('host')
-    },
-    cookiePathRewrite: {
-      '*': '/'
-    },
 
-    // Request handling
     onProxyReq: (proxyReq, req, res) => {
-      if (proxyReq._headerSent) return;
-
       try {
-        // Set headers
-        const headers = headerHandler.getDefaultHeaders(req.headers['user-agent']);
-        Object.entries(headers).forEach(([key, value]) => {
-          if (value) {
-            proxyReq.setHeader(key, value);
-          }
-        });
-
-        // Handle cookies
-        cookieHandler.onProxyReq(proxyReq, req);
+        // Primero manejar las cookies antes que otros headers
+        cookieHandler.handleRequest(proxyReq, req);
+        
+        // Luego configurar los headers restantes
+        if (!proxyReq._headerSent) {
+          headerHandler.setHeaders(proxyReq, req);
+        }
       } catch (error) {
         console.error('Error in onProxyReq:', error);
       }
     },
 
-    // Response handling
     onProxyRes: (proxyRes, req, res) => {
       try {
-        // Remove security headers
-        const removeHeaders = [
-          'x-frame-options',
-          'content-security-policy',
-          'content-security-policy-report-only',
-          'strict-transport-security',
-          'x-content-type-options',
-          'x-xss-protection'
-        ];
-
-        removeHeaders.forEach(header => {
-          delete proxyRes.headers[header];
-        });
-
-        // Handle cookies
-        cookieHandler.onProxyRes(proxyRes, req);
+        // Eliminar headers problemáticos primero
+        headerHandler.removeProblematicHeaders(proxyRes.headers);
+        
+        // Luego manejar las cookies de respuesta
+        cookieHandler.handleResponse(proxyRes, req);
       } catch (error) {
         console.error('Error in onProxyRes:', error);
       }
     },
 
-    // Error handling
     onError: async (err, req, res) => {
       console.error('Proxy error:', err);
 
@@ -86,7 +58,6 @@ export function createProxyConfig(account, req, targetDomain) {
         });
         res.end('Proxy error');
       }
-      proxyManager.resetRetryCount();
     }
   };
 }

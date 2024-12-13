@@ -3,24 +3,31 @@ export class HeaderHandler {
     this.targetDomain = targetDomain;
   }
 
-  getDefaultHeaders(userAgent) {
-    return {
-      'User-Agent': userAgent || 'Mozilla/5.0',
-      'Accept': '*/*',
-      'Accept-Language': 'es-MX,es;q=0.9,en;q=0.8',
-      'Accept-Encoding': 'gzip, deflate',
+  setHeaders(proxyReq, req) {
+    if (proxyReq._headerSent) return;
+
+    const headers = {
+      'user-agent': req.headers['user-agent'] || 'Mozilla/5.0',
+      'accept': req.headers['accept'] || '*/*',
+      'accept-language': req.headers['accept-language'] || 'en-US,en;q=0.9',
+      'accept-encoding': req.headers['accept-encoding'] || 'gzip, deflate, br',
       'host': this.targetDomain,
-      'x-forwarded-for': '45.166.110.64',
-      'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache'
+      'cache-control': 'no-cache',
+      'pragma': 'no-cache'
     };
+
+    Object.entries(headers).forEach(([key, value]) => {
+      try {
+        if (!proxyReq._headerSent) {
+          proxyReq.setHeader(key, value);
+        }
+      } catch (error) {
+        console.warn(`Warning: Could not set header ${key}:`, error.message);
+      }
+    });
   }
 
   removeProblematicHeaders(headers) {
-    if (!headers || typeof headers !== 'object') {
-      return;
-    }
-
     const headersToRemove = [
       'content-security-policy',
       'x-frame-options',
