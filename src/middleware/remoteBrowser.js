@@ -13,41 +13,51 @@ export async function remoteBrowserMiddleware(req, res, next) {
       return res.status(400).send('Invalid target URL');
     }
 
+    // Convertir cookies del objeto a formato de Playwright
+    const cookies = account.cookies ? Object.entries(account.cookies).map(([name, value]) => ({
+      name,
+      value,
+      domain: targetDomain,
+      path: '/'
+    })) : [];
+
     // Obtener o crear sesión de navegador
     let page = await sessionManager.getSession(account.name);
     if (!page) {
-      page = await sessionManager.createSession(account.name, account.cookies);
+      page = await sessionManager.createSession(account.name, cookies);
     }
 
-    // Interceptar y reescribir respuestas
-    await page.route('**/*', async route => {
-      const response = await route.fetch();
-      const headers = {
-        ...response.headers(),
-        'X-Frame-Options': 'ALLOWALL',
-        'Content-Security-Policy': ''
-      };
-      await route.fulfill({ response, headers });
-    });
+    // Construir la URL completa
+    const url = new URL(req.url.startsWith('/') ? req.url : `/${req.url}`, account.url).toString();
 
-    // Navegar a la URL solicitada
-    const url = req.url.startsWith('/') ? 
-      `${account.url}${req.url}` : 
-      req.url;
-
-    const response = await page.goto(url, {
+    // Navegar a la página
+    await page.goto(url, {
       waitUntil: 'networkidle'
     });
 
-    // Obtener y modificar el contenido
+    // Obtener el contenido
     const content = await page.content();
-    const modifiedContent = content
-      .replace(new RegExp(targetDomain, 'g'), req.get('host'))
-      .replace(/<head>/, '<head><base href="/">')
-      .replace(/integrity="[^"]*"/g, '');
+    const headers = await page.evaluate(() => {
+      const headers = {};
+      document.querySelectorAll('meta').forEach(meta => {
+        const name = meta.getAttribute('name');
+        const content = meta.getAttribute('content');
+        if (name && content) {
+          headers[name] = content;
+        }
+      });
+      return headers;
+    });
+
+    // Establecer headers de respuesta
+    res.set({
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store',
+      ...headers
+    });
 
     // Enviar respuesta
-    res.send(modifiedContent);
+    res.send(content);
 
   } catch (error) {
     console.error('Remote browser error:', error);
