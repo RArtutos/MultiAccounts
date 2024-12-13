@@ -12,6 +12,8 @@
     "http-proxy-middleware": "^2.0.6",
     "cookie-parser": "^1.4.6",
     "ws": "^8.16.0",
-    "express-ws": "^5.0.2"
+    "express-ws": "^5.0.2",
+    "https-proxy-agent": "^7.0.2",
+    "socks-proxy-agent": "^8.0.2"
   }
 }
