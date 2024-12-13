@@ -1,7 +1,7 @@
 {
   "accounts": [
     {
-      "name": "Netflix Account 1",
+      "name": "1",
       "url": "https://www.netflix.com",
       "status": "Available",
       "maxUsers": 4,
@@ -13,7 +13,7 @@
       }
     },
     {
-      "name": "Netflix Account 2",
+      "name": "2",
       "url": "https://www.netflix.com",
       "status": "In Use",
       "maxUsers": 2,
@@ -25,7 +25,7 @@
       }
     },
     {
-      "name": "HBO Account 1",
+      "name": "3",
       "url": "https://www.hbo.com",
       "status": "Available",
       "maxUsers": 3,
