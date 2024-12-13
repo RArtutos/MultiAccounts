@@ -28,19 +28,16 @@ export class ProxyManager {
   }
 
   async switchToFallback() {
-    if (this.currentAgent === this.httpAgent && this.retryCount < this.maxRetries) {
-      console.log('Switching to SOCKS5 proxy...');
-      this.currentAgent = this.socksAgent;
-      this.retryCount++;
-      return true;
+    if (this.retryCount >= this.maxRetries) {
+      return false;
     }
-    if (this.currentAgent === this.socksAgent && this.retryCount < this.maxRetries) {
-      console.log('Switching back to HTTP proxy...');
-      this.currentAgent = this.httpAgent;
-      this.retryCount++;
-      return true;
-    }
-    return false;
+
+    this.currentAgent = this.currentAgent === this.httpAgent ? 
+      this.socksAgent : this.httpAgent;
+    this.retryCount++;
+    
+    console.log(`Switched to ${this.currentAgent === this.httpAgent ? 'HTTP' : 'SOCKS5'} proxy`);
+    return true;
   }
 
   resetRetryCount() {

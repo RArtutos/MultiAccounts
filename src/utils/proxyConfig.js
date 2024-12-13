@@ -1,6 +1,8 @@
+import { ProxyManager } from './proxy/proxyManager.js';
+
+const proxyManager = new ProxyManager();
+
 export function createProxyConfig(account, req, targetDomain) {
-  const accountPath = `/stream/${encodeURIComponent(account.name)}`;
-  
   return {
     target: account.url,
     changeOrigin: true,
@@ -9,52 +11,52 @@ export function createProxyConfig(account, req, targetDomain) {
     autoRewrite: true,
     ws: true,
     xfwd: true,
+    agent: proxyManager.getAgent(),
+    
     cookieDomainRewrite: {
       '*': req.get('host')
     },
-    // Añadir configuración específica para WebSocket
-    wsOptions: {
-      maxPayload: 64 * 1024 * 1024, // 64MB
-      pingTimeout: 60000,
-      pingInterval: 25000
+    cookiePathRewrite: {
+      '*': '/'
     },
-    onProxyReqWs: (proxyReq, req, socket) => {
-      // Manejar errores de socket
-      socket.on('error', (err) => {
-        console.log('WebSocket socket error:', err);
-      });
-    },
-    onError: (err, req, res) => {
-      console.log('Proxy error:', err);
-      if (!res.headersSent) {
-        res.writeHead(500, { 'Content-Type': 'text/plain' });
-        res.end('Proxy error');
+
+    onProxyReq: (proxyReq, req, res) => {
+      try {
+        // Headers básicos
+        proxyReq.setHeader('User-Agent', req.headers['user-agent'] || 'Mozilla/5.0');
+        proxyReq.setHeader('Accept', '*/*');
+        proxyReq.setHeader('Accept-Language', 'es-MX,es;q=0.9,en;q=0.8');
+        proxyReq.setHeader('Accept-Encoding', 'gzip, deflate');
+        proxyReq.setHeader('host', targetDomain);
+        proxyReq.setHeader('x-forwarded-for', '45.166.110.64');
+
+        // Cookies de la cuenta si existen
+        if (account.cookies) {
+          const cookieString = Object.entries(account.cookies)
+            .map(([name, value]) => `${name}=${value}`)
+            .join('; ');
+          
+          if (cookieString) {
+            proxyReq.setHeader('cookie', cookieString);
+          }
+        }
+      } catch (error) {
+        console.error('Error en onProxyReq:', error);
       }
     },
-    pathRewrite: (path) => {
-      if (path.includes('http://') || path.includes('https://')) {
-        const matches = path.match(/\/stream\/[^/]+\/(.+)/);
-        return matches ? `/${matches[1]}` : path;
+
+    onError: async (err, req, res) => {
+      console.error('Error de proxy:', err);
+
+      if (await proxyManager.switchToFallback()) {
+        console.log('Reintentando con proxy alternativo...');
+      } else {
+        if (!res.headersSent) {
+          res.writeHead(500, { 'Content-Type': 'text/plain' });
+          res.end('Error de proxy');
+        }
+        proxyManager.resetRetryCount();
       }
-      return path.startsWith(accountPath) 
-        ? path.slice(accountPath.length) || '/'
-        : path;
-    },
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-      'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache',
-      'X-Forwarded-For': req.ip,
-      'X-Forwarded-Proto': req.protocol,
-      'X-Forwarded-Host': req.get('host'),
-      ...(account.cookies && {
-        'Cookie': Object.entries(account.cookies)
-          .map(([name, value]) => `${name}=${value}`)
-          .join('; ')
-      })
     }
   };
 }
