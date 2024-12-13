@@ -1,1 +1,0 @@
-export { createProxyConfig } from './proxy/config/proxyConfig.js';
