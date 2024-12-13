@@ -13,7 +13,9 @@ export class CookieHandler {
         .filter(([name, value]) => name && value)
         .map(([name, value]) => serialize(name, value, {
           path: '/',
-          sameSite: 'none'
+          sameSite: 'none',
+          secure: true,
+          domain: null // Permitir que el dominio se maneje automáticamente
         }))
         .join('; ');
     } catch (error) {
@@ -34,11 +36,23 @@ export class CookieHandler {
         const parsed = parse(cookiePart);
         const [[name, value]] = Object.entries(parsed);
 
+        // Mantener atributos originales excepto domain y path
+        const originalAttributes = attributes.reduce((acc, attr) => {
+          const [key, val] = attr.trim().toLowerCase().split('=');
+          if (!['domain', 'path'].includes(key)) {
+            acc[key] = val || true;
+          }
+          return acc;
+        }, {});
+
         // Build new cookie with modified attributes
         return serialize(name, value, {
           path: '/',
           sameSite: 'none',
-          secure: false
+          secure: true,
+          httpOnly: originalAttributes.httponly || false,
+          ...originalAttributes,
+          domain: null // Permitir que el dominio se maneje automáticamente
         });
       } catch (error) {
         console.error('Error transforming cookie:', error);
