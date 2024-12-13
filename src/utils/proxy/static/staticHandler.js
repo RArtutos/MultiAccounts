@@ -2,7 +2,8 @@ export class StaticHandler {
   constructor() {
     this.staticExtensions = new Set([
       'css', 'js', 'jpg', 'jpeg', 'png', 'gif', 
-      'svg', 'webp', 'woff', 'woff2', 'ttf', 'eot'
+      'svg', 'webp', 'woff', 'woff2', 'ttf', 'eot',
+      'ico', 'mp4', 'webm', 'mp3', 'wav'
     ]);
   }
 
@@ -15,14 +16,14 @@ export class StaticHandler {
     }
   }
 
-  shouldTransform(contentType, url) {
+  shouldTransform(contentType) {
     if (!contentType) return false;
     
-    // Don't transform static resources
-    if (this.isStaticResource(url)) return false;
-
-    // Only transform HTML and JavaScript
-    return contentType.includes('text/html') || 
-           contentType.includes('javascript');
+    const type = contentType.toLowerCase();
+    return type.includes('text/html') || 
+           type.includes('javascript') ||
+           type.includes('application/json') ||
+           type.includes('text/plain') ||
+           type.includes('application/x-www-form-urlencoded');
   }
 }

@@ -4,22 +4,16 @@ export function rewriteUrls(content, account, targetDomain, req) {
   const accountPrefix = `/stream/${encodeURIComponent(account.name)}`;
   const baseUrl = account.url.replace(/\/$/, '');
 
-  // Helper function to rewrite URLs
   function rewriteUrl(url) {
-    if (!url) return url;
+    if (!url || typeof url !== 'string') return url;
 
-    // Don't rewrite URLs for static resources
-    if (url.match(/\.(jpg|jpeg|png|gif|svg|webp|css|js|woff2?|ttf|eot)(\?.*)?$/i)) {
-      return url;
-    }
-
-    // If URL already has our prefix, don't modify it
+    // No reescribir si ya tiene nuestro prefijo
     if (url.startsWith(accountPrefix)) {
       return url;
     }
 
     try {
-      // Handle absolute URLs
+      // Manejar URLs absolutas
       if (url.startsWith('http') || url.startsWith('//')) {
         const urlObj = new URL(url.startsWith('//') ? `https:${url}` : url);
         if (isInternalUrl(url, targetDomain)) {
@@ -28,60 +22,56 @@ export function rewriteUrls(content, account, targetDomain, req) {
         return url;
       }
 
-      // Handle relative URLs
+      // Manejar URLs relativas
       if (url.startsWith('/')) {
-        // Absolute path relative to domain root
         return `${accountPrefix}${url}`;
-      } else {
-        // Relative path - combine with current path
-        const currentPath = req.originalPath || '/';
-        const currentDir = currentPath.split('/').slice(0, -1).join('/');
-        const resolvedPath = new URL(url, `${baseUrl}${currentDir}/`).pathname;
-        return `${accountPrefix}${resolvedPath}`;
       }
+
+      // URLs relativas sin /
+      const currentPath = req?.originalPath || '/';
+      const currentDir = currentPath.split('/').slice(0, -1).join('/');
+      const resolvedPath = new URL(url, `${baseUrl}${currentDir}/`).pathname;
+      return `${accountPrefix}${resolvedPath}`;
+
     } catch (error) {
       console.error('Error transforming URL:', error);
       return url;
     }
   }
 
-  let modifiedContent = content;
-
-  // Rewrite URLs in HTML attributes
-  modifiedContent = modifiedContent.replace(
-    /(href|src|action|data-src|poster)=["']([^"']+)["']/gi,
-    (match, attr, url) => {
-      if (url.match(/\.(jpg|jpeg|png|gif|svg|webp|css|js|woff2?|ttf|eot)(\?.*)?$/i)) {
-        return match;
-      }
-      return `${attr}="${rewriteUrl(url)}"`;
-    }
+  // Reescribir URLs en atributos HTML
+  content = content.replace(
+    /(href|src|action|data-src|poster|formaction)=["']([^"']+)["']/gi,
+    (match, attr, url) => `${attr}="${rewriteUrl(url)}"`
   );
 
-  // Rewrite URLs in meta refresh
-  modifiedContent = modifiedContent.replace(
+  // Reescribir URLs en meta refresh
+  content = content.replace(
     /content=["'](\d*;\s*URL=)([^"']+)["']/gi,
     (match, prefix, url) => `content="${prefix}${rewriteUrl(url)}"`
   );
 
-  // Rewrite URLs in JavaScript
+  // Reescribir URLs en JavaScript
   const jsPatterns = [
-    // Direct redirects
+    // Redirecciones directas
     /(window\.location|location|window\.location\.href|location\.href)\s*=\s*["']([^"']+)["']/gi,
-    // Navigation functions
+    // Funciones de navegación
     /(window\.open|location\.replace|location\.assign)\(["']([^"']+)["']/gi,
-    // AJAX requests
-    /(fetch|axios\.get|axios\.post|\.ajax)\(["']([^"']+)["']/gi
+    // AJAX y Fetch
+    /(fetch|axios\.get|axios\.post|\.ajax)\(["']([^"']+)["']/gi,
+    // URLs en strings
+    /(['"])(\/[^'"]+)(['"])/g
   ];
 
   jsPatterns.forEach(pattern => {
-    modifiedContent = modifiedContent.replace(pattern, (match, func, url) => {
+    content = content.replace(pattern, (match, prefix, url, suffix) => {
       if (url.match(/\.(jpg|jpeg|png|gif|svg|webp|css|js|woff2?|ttf|eot)(\?.*)?$/i)) {
         return match;
       }
-      return `${func}"${rewriteUrl(url)}"`;
+      const rewrittenUrl = rewriteUrl(url);
+      return suffix ? `${prefix}${rewrittenUrl}${suffix}` : match.replace(url, rewrittenUrl);
     });
   });
 
-  return modifiedContent;
+  return content;
 }
