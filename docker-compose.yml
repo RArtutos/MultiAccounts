@@ -16,13 +16,25 @@ services:
       - ADMIN_PASSWORD=secret
     restart: unless-stopped
 
-  nginx:
-    image: nginx:alpine
+  squid:
+    build:
+      context: .
+      dockerfile: Dockerfile.squid
     ports:
-      - "80:80"
+      - "3128:3128"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-    depends_on:
-      - app
+      - ./squid/squid.conf:/etc/squid/squid.conf:ro
+      - ./squid/rewriter:/usr/local/squid/rewriter:ro
+      - squid_cache:/var/spool/squid
+      - squid_logs:/var/log/squid
+    environment:
+      - PROXY_USER=arturojkl
+      - PROXY_PASS=HQKxDbtCiC
+      - PROXY_HOST=45.166.110.64
+      - PROXY_HTTP_PORT=50100
+      - PROXY_SOCKS_PORT=50101
     restart: unless-stopped
+
+volumes:
+  squid_cache:
+  squid_logs:

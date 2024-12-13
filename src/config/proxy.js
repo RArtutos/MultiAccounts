@@ -1,3 +1,4 @@
+// Configuración del proxy de México
 export const proxyConfig = {
   mexico: {
     http: {

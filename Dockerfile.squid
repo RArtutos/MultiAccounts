@@ -7,7 +7,7 @@ RUN apt-get update && \
 
 # Create directories and set permissions
 RUN mkdir -p /usr/local/squid/rewriter /var/log/squid && \
-    chown -R proxy:proxy /usr/local/squid/rewriter /var/log/squid
+    chown -R proxy:proxy /usr/local/squid/rewriter /var/log/squid /var/spool/squid
 
 # Copy rewriter script
 COPY squid/rewriter/main.py /usr/local/squid/rewriter/
