@@ -2,19 +2,26 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Instalar dependencias del sistema
-RUN apk add --no-cache python3 make g++
+# Install system dependencies
+RUN apk add --no-cache python3 make g++ git
 
-# Copiar archivos de configuración
+# Copy configuration files
 COPY package*.json ./
-COPY src ./src
-COPY data ./data
 
-# Instalar dependencias
+# Install dependencies
 RUN npm install
 
-# Exponer puerto
+# Clone and build Velocity
+RUN git clone https://github.com/cohenerickson/Velocity.git src/velocity && \
+    cd src/velocity && \
+    npm install && \
+    npm run build
+
+# Copy source code
+COPY . .
+
+# Expose port
 EXPOSE 3000
 
-# Comando de inicio
+# Start command
 CMD ["node", "src/server.js"]

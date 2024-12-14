@@ -14,13 +14,18 @@ router.use('/:accountName/*', async (req, res, next) => {
       return res.status(404).send('Account not found');
     }
 
+    if (account.status !== 'Available') {
+      return res.status(403).send('Account not available');
+    }
+
     const velocityService = new VelocityService(account);
     const proxyInstance = await velocityService.createProxyInstance();
     
-    // Almacenar la instancia de Velocity en la request para uso posterior
+    // Store the proxy instance in the request for later use
     req.velocityProxy = proxyInstance;
     next();
   } catch (error) {
+    console.error('Error in proxy middleware:', error);
     next(error);
   }
 });

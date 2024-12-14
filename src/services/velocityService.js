@@ -5,24 +5,31 @@ export class VelocityService {
   constructor(account) {
     this.account = account;
     this.cookieManager = new CookieManager(account);
+    this.config = {
+      ...velocityConfig,
+      target: account.url
+    };
   }
 
   async createProxyInstance() {
-    const config = {
-      ...velocityConfig,
-      cookies: await this.cookieManager.getAccountCookies(),
-      headers: {
-        ...velocityConfig.netflix.headers,
-        'Cookie': await this.cookieManager.getCookieString()
-      }
-    };
+    const cookies = await this.cookieManager.getAccountCookies();
+    const cookieString = await this.cookieManager.getCookieString();
 
     return {
-      config,
-      getProxyUrl: (path = '') => {
-        const encodedUrl = encodeURIComponent(`${velocityConfig.netflix.url}${path}`);
-        return `${velocityConfig.prefix}${encodedUrl}`;
+      config: {
+        ...this.config,
+        cookies,
+        headers: {
+          ...velocityConfig.netflix.headers,
+          'Cookie': cookieString
+        }
       }
     };
+  }
+
+  getProxyUrl(path = '') {
+    const baseUrl = this.account.url;
+    const encodedUrl = encodeURIComponent(`${baseUrl}${path}`);
+    return `${velocityConfig.prefix}${encodedUrl}`;
   }
 }
