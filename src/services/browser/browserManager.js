@@ -1,30 +1,50 @@
-import { chromium } from 'playwright';
-import { browserConfig } from '../../config/browser.js';
-import { proxyManager } from '../proxy/proxyManager.js';
+import puppeteer from 'puppeteer';
+import { proxyConfig } from '../../config/proxy.js';
 
 export class BrowserManager {
   constructor() {
     this.browsers = new Map();
+    this.displays = new Map();
   }
 
   async createBrowser(accountId) {
     try {
-      const browser = await chromium.launch({
-        ...browserConfig,
-        proxy: proxyManager.getProxyConfig()
+      const displayNum = 99 + parseInt(accountId);
+      const display = `:${displayNum}`;
+      
+      // Configurar browser con Puppeteer
+      const browser = await puppeteer.launch({
+        headless: false,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--disable-gpu',
+          '--window-size=1920,1080',
+          `--proxy-server=${proxyConfig.server}`,
+          '--enable-features=NetworkService',
+          `--display=${display}`
+        ],
+        defaultViewport: {
+          width: 1920,
+          height: 1080
+        }
       });
+
+      // Configurar autenticación de proxy
+      const page = await browser.newPage();
+      await page.authenticate({
+        username: proxyConfig.username,
+        password: proxyConfig.password
+      });
+
       this.browsers.set(accountId, browser);
+      this.displays.set(accountId, display);
+
       return browser;
     } catch (error) {
-      if (error.message.includes('proxy')) {
-        proxyManager.switchToHttps();
-        const browser = await chromium.launch({
-          ...browserConfig,
-          proxy: proxyManager.getProxyConfig()
-        });
-        this.browsers.set(accountId, browser);
-        return browser;
-      }
+      console.error('Error creating browser:', error);
       throw error;
     }
   }
@@ -36,11 +56,16 @@ export class BrowserManager {
     return this.browsers.get(accountId);
   }
 
+  getDisplay(accountId) {
+    return this.displays.get(accountId);
+  }
+
   async closeBrowser(accountId) {
     const browser = this.browsers.get(accountId);
     if (browser) {
       await browser.close();
       this.browsers.delete(accountId);
+      this.displays.delete(accountId);
     }
   }
 
@@ -50,3 +75,5 @@ export class BrowserManager {
     }
   }
 }
+
+export const browserManager = new BrowserManager();

@@ -1,12 +1,14 @@
 version: '3.8'
 
 services:
-  proxy:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3000:3000"      # API y interfaz web
+      - "6080-6089:6080-6089"  # Puertos noVNC
+      - "5900-5909:5900-5909"  # Puertos VNC nativos
     volumes:
       - ./data:/app/data
       - ./src:/app/src
@@ -14,18 +16,32 @@ services:
       - NODE_ENV=production
       - ADMIN_USER=admin
       - ADMIN_PASSWORD=secret
-    restart: unless-stopped
+      - DISPLAY=:99
+      - RESOLUTION=1920x1080x24
     cap_add:
-      - SYS_ADMIN  # Necesario para Chromium
-    shm_size: '2gb'  # Memoria compartida para el navegador
+      - SYS_ADMIN
+    shm_size: '2gb'
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   nginx:
     image: nginx:alpine
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
-      - proxy
+      - app
     restart: unless-stopped
