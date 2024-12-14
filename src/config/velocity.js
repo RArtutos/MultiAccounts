@@ -6,6 +6,10 @@ export const velocityConfig = {
     path: '/bare/'
   },
   staticPath: '/velocity',
+  client: {
+    title: 'Streaming Proxy',
+    favicon: '/favicon.ico'
+  },
   netflix: {
     url: 'https://www.netflix.com',
     headers: {

@@ -5,6 +5,9 @@ WORKDIR /app
 # Install system dependencies
 RUN apk add --no-cache python3 make g++ git
 
+# Create velocity directory structure
+RUN mkdir -p src/velocity/dist
+
 # Copy configuration files
 COPY package*.json ./
 
@@ -12,10 +15,13 @@ COPY package*.json ./
 RUN npm install
 
 # Clone and build Velocity
-RUN git clone https://github.com/cohenerickson/Velocity.git src/velocity && \
-    cd src/velocity && \
+RUN git clone https://github.com/cohenerickson/Velocity.git velocity && \
+    cd velocity && \
     npm install && \
-    npm run build
+    npm run build && \
+    cp -r dist/* ../src/velocity/dist/ && \
+    cd .. && \
+    rm -rf velocity
 
 # Copy source code
 COPY . .

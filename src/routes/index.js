@@ -1,27 +1,35 @@
+import express from 'express';
 import { adminRouter } from './admin.js';
 import { proxyRouter } from './proxy.js';
 import { dashboardRouter } from './dashboard.js';
 import { config } from '../config/index.js';
 
-export function setupRoutes(app) {
-  // Mount routes based on domain
-  app.use((req, res, next) => {
-    const host = req.get('host');
-    if (host === config.domain.base) {
-      next();
-    } else {
-      proxyRouter(req, res, next);
+export const router = express.Router();
+
+// Middleware para determinar el tipo de ruta basado en el dominio
+router.use((req, res, next) => {
+  const host = req.get('host');
+  const isMainDomain = host === config.domain.base;
+
+  if (isMainDomain) {
+    // Rutas principales
+    if (req.path === '/') {
+      return res.redirect('/dashboard');
     }
-  });
+    if (req.path.startsWith('/admin')) {
+      return adminRouter(req, res, next);
+    }
+    if (req.path.startsWith('/dashboard')) {
+      return dashboardRouter(req, res, next);
+    }
+  } else {
+    // Rutas de proxy para subdominios
+    return proxyRouter(req, res, next);
+  }
+  
+  next();
+});
 
-  // Admin routes
-  app.use('/admin', adminRouter);
-
-  // Dashboard routes
-  app.use('/dashboard', dashboardRouter);
-
-  // Root redirect
-  app.get('/', (req, res) => {
-    res.redirect('/dashboard');
-  });
-}
+// Montar rutas específicas
+router.use('/admin', adminRouter);
+router.use('/dashboard', dashboardRouter);
