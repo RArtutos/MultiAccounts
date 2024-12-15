@@ -1,33 +1,75 @@
-import { StaticHandler } from '../static/staticHandler.js';
-import { EXCLUDED_HEADERS } from '../config/headers.js';
+import { CookieManager } from '../cookies/cookieManager.js';
 
 export class ResponseHandler {
-  constructor() {
-    this.staticHandler = new StaticHandler();
+  constructor(account) {
+    this.account = account;
+    this.cookieManager = new CookieManager(account);
   }
 
-  handle(proxyRes, req, res) {
-    try {
-      // Eliminar headers problemáticos
-      EXCLUDED_HEADERS.forEach(header => {
-        delete proxyRes.headers[header];
-      });
+  handleResponse(proxyRes, req, res) {
+    // No modificar headers si ya fueron enviados
+    if (res.headersSent) {
+      return;
+    }
 
-      // Copiar headers seguros
+    try {
+      // Headers a excluir
+      const excludedHeaders = [
+        'content-length',
+        'transfer-encoding',
+        'content-security-policy',
+        'x-frame-options',
+        'strict-transport-security'
+      ];
+
+      // Copiar headers necesarios
       Object.entries(proxyRes.headers).forEach(([key, value]) => {
-        if (!res.headersSent && !EXCLUDED_HEADERS.includes(key.toLowerCase())) {
-          res.setHeader(key, value);
+        const headerKey = key.toLowerCase();
+        if (!excludedHeaders.includes(headerKey) && value !== undefined && value !== null) {
+          try {
+            res.setHeader(key, value);
+          } catch (e) {
+            // Ignorar errores de headers
+          }
         }
       });
 
-      // Establecer headers de caché
-      if (!res.headersSent) {
-        if (this.staticHandler.isStaticResource(req.url)) {
-          res.setHeader('Cache-Control', 'public, max-age=31536000');
-        } else {
-          res.setHeader('Cache-Control', 'no-store');
+      // Manejar cookies
+      if (proxyRes.headers['set-cookie']) {
+        try {
+          const newCookies = this.cookieManager.handleResponseCookies(proxyRes.headers['set-cookie']);
+          this.cookieManager.updateAccountCookies(newCookies);
+
+          const transformedCookies = proxyRes.headers['set-cookie'].map(cookie => {
+            return cookie
+              .replace(/Domain=[^;]+/, `Domain=${req.get('host')}`)
+              .replace(/Path=[^;]+/, 'Path=/');
+          });
+
+          res.setHeader('set-cookie', transformedCookies);
+        } catch (e) {
+          console.error('Error handling cookies:', e);
         }
       }
+
+      // Manejar redirecciones
+      if (proxyRes.headers.location) {
+        try {
+          const location = proxyRes.headers.location;
+          if (location.startsWith('http')) {
+            const url = new URL(location);
+            const newLocation = `https://${req.get('host')}${url.pathname}${url.search}`;
+            res.setHeader('location', newLocation);
+          }
+        } catch (e) {
+          console.error('Error handling redirect:', e);
+        }
+      }
+
+      // Establecer CORS headers
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', '*');
     } catch (error) {
       console.error('Error handling response:', error);
     }

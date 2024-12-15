@@ -1,53 +1,69 @@
-import { StaticHandler } from '../static/staticHandler.js';
-
 export class RequestHandler {
-  constructor(account, req) {
+  constructor(account, targetDomain) {
     this.account = account;
-    this.req = req;
-    this.staticHandler = new StaticHandler();
+    this.targetDomain = targetDomain;
   }
 
-  createPathRewrite() {
-    const accountPath = `/stream/${encodeURIComponent(this.account.name)}`;
-    
-    return (path) => {
-      if (this.staticHandler.isStaticResource(path)) {
-        return path;
-      }
-
-      return path.startsWith(accountPath) ? 
-        path.slice(accountPath.length) || '/' : 
-        path;
-    };
-  }
-
-  handleRequest(proxyReq) {
+  handleRequest(proxyReq, req) {
     try {
-      // Headers básicos
-      const headers = {
-        'User-Agent': this.req.headers['user-agent'],
-        'Accept': '*/*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
+      // Establecer headers básicos
+      const baseHeaders = {
+        'host': this.targetDomain,
+        'origin': this.account.url,
+        'referer': this.account.url
       };
 
-      // Establecer headers
-      for (const [key, value] of Object.entries(headers)) {
-        if (!proxyReq.getHeader(key)) {
-          proxyReq.setHeader(key, value);
-        }
-      }
+      // Copiar headers importantes del request original
+      const headersToKeep = [
+        'user-agent',
+        'accept',
+        'accept-language',
+        'accept-encoding',
+        'cache-control',
+        'pragma'
+      ];
 
-      // Gestionar cookies
+      headersToKeep.forEach(header => {
+        if (req.headers[header]) {
+          baseHeaders[header] = req.headers[header];
+        }
+      });
+
+      // Establecer headers
+      Object.entries(baseHeaders).forEach(([key, value]) => {
+        if (value) {
+          try {
+            proxyReq.setHeader(key, value);
+          } catch (e) {
+            // Ignorar errores de headers
+          }
+        }
+      });
+
+      // Manejar cookies
       if (this.account.cookies) {
         const cookieString = Object.entries(this.account.cookies)
           .map(([name, value]) => `${name}=${value}`)
           .join('; ');
-        
-        if (cookieString && !proxyReq.getHeader('cookie')) {
-          proxyReq.setHeader('cookie', cookieString);
+
+        if (cookieString) {
+          try {
+            proxyReq.setHeader('cookie', cookieString);
+          } catch (e) {
+            // Ignorar errores de cookies
+          }
+        }
+      }
+
+      // Manejar datos POST
+      if (req.method === 'POST' && req.body) {
+        try {
+          const bodyData = JSON.stringify(req.body);
+          proxyReq.setHeader('content-length', Buffer.byteLength(bodyData));
+          proxyReq.setHeader('content-type', 'application/json');
+          proxyReq.write(bodyData);
+        } catch (e) {
+          console.error('Error writing POST data:', e);
         }
       }
     } catch (error) {
