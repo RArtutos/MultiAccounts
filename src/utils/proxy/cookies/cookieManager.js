@@ -1,5 +1,3 @@
-import { parse as parseCookie } from 'cookie';
-
 export class CookieManager {
   constructor(account) {
     this.account = account;
@@ -48,10 +46,23 @@ export class CookieManager {
 
     for (const cookieHeader of setCookieHeaders) {
       try {
-        const [nameValue] = cookieHeader.split(';');
+        // Extraer nombre y valor de la cookie
+        const [nameValue, ...options] = cookieHeader.split(';');
         const [name, value] = nameValue.split('=');
+
         if (name && value) {
-          newCookies[name.trim()] = value.trim();
+          // Analizar opciones de la cookie
+          const cookieOptions = options.reduce((acc, opt) => {
+            const [key, val] = opt.trim().split('=');
+            if (key) acc[key.toLowerCase()] = val || true;
+            return acc;
+          }, {});
+
+          // Almacenar la cookie con sus opciones
+          newCookies[name.trim()] = {
+            value: value.trim(),
+            options: cookieOptions
+          };
         }
       } catch (error) {
         console.error('Error parsing Set-Cookie header:', error);
@@ -62,10 +73,14 @@ export class CookieManager {
   }
 
   updateAccountCookies(newCookies) {
-    this.account.cookies = {
-      ...this.account.cookies,
-      ...newCookies
-    };
+    if (!this.account.cookies) {
+      this.account.cookies = {};
+    }
+
+    // Actualizar cookies existentes y agregar nuevas
+    for (const [name, { value, options }] of Object.entries(newCookies)) {
+      this.account.cookies[name] = value;
+    }
   }
 
   setUserCookies(userId, cookies) {
@@ -74,5 +89,19 @@ export class CookieManager {
 
   getUserCookies(userId) {
     return this.userCookies.get(userId) || {};
+  }
+
+  cleanExpiredCookies() {
+    if (!this.account.cookies) return;
+
+    const now = new Date();
+    Object.entries(this.account.cookies).forEach(([name, { value, options }]) => {
+      if (options && options.expires) {
+        const expires = new Date(options.expires);
+        if (expires < now) {
+          delete this.account.cookies[name];
+        }
+      }
+    });
   }
 }

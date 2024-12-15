@@ -1,25 +1,27 @@
-import { getDefaultHeaders, EXCLUDED_HEADERS } from './headers.js';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import { CookieManager } from '../cookies/cookieManager.js';
+import { HeaderManager } from '../headers/headerManager.js';
+import { getDefaultHeaders } from './headers.js';
 
 const PROXY_CONFIG = {
-  http: 'http://arturojkl:HQKxDbtCiC@45.166.110.64:50100',
-  https: 'http://arturojkl:HQKxDbtCiC@45.166.110.64:50100',
-  socks5: 'socks5://arturojkl:HQKxDbtCiC@45.166.110.64:50101'
+  http: process.env.HTTP_PROXY,
+  https: process.env.HTTPS_PROXY,
+  socks5: process.env.SOCKS_PROXY
 };
 
 export function createProxyConfig(account, req, targetDomain) {
   const cookieManager = new CookieManager(account);
+  const headerManager = new HeaderManager();
   const headers = getDefaultHeaders(req.headers['user-agent']);
   
   // Obtener cookies del usuario actual
   const userCookies = cookieManager.parseCookieHeader(req.headers.cookie);
   const cookieString = cookieManager.getCookieString(userCookies);
 
-  // Create proxy agents
-  const httpsAgent = new HttpsProxyAgent(PROXY_CONFIG.https);
-  const socksAgent = new SocksProxyAgent(PROXY_CONFIG.socks5);
+  // Crear agentes de proxy si están configurados
+  const proxyAgent = PROXY_CONFIG.https ? new HttpsProxyAgent(PROXY_CONFIG.https) : null;
+  const socksAgent = PROXY_CONFIG.socks5 ? new SocksProxyAgent(PROXY_CONFIG.socks5) : null;
 
   return {
     target: account.url,
@@ -29,7 +31,7 @@ export function createProxyConfig(account, req, targetDomain) {
     autoRewrite: true,
     ws: true,
     xfwd: true,
-    agent: targetDomain.includes('netflix.com') ? socksAgent : httpsAgent,
+    agent: proxyAgent || socksAgent,
     cookieDomainRewrite: {
       '*': req.get('host')
     },
@@ -39,9 +41,18 @@ export function createProxyConfig(account, req, targetDomain) {
     preserveHeaderKeyCase: true,
     timeout: 60000,
     proxyTimeout: 60000,
+    // Configuración mejorada para WebSocket
     wsOptions: {
-      maxPayload: 64 * 1024 * 1024,
-      perMessageDeflate: true
+      maxPayload: 128 * 1024 * 1024, // 128MB
+      perMessageDeflate: {
+        zlibDeflateOptions: { chunkSize: 1024, memLevel: 7, level: 3 },
+        zlibInflateOptions: { chunkSize: 10 * 1024 },
+        clientNoContextTakeover: true,
+        serverNoContextTakeover: true,
+        serverMaxWindowBits: 10,
+        concurrencyLimit: 10,
+        threshold: 1024
+      }
     },
     headers: {
       ...headers,
@@ -62,6 +73,14 @@ export function createProxyConfig(account, req, targetDomain) {
           proxyReq.write(bodyData);
         }
 
+        // Manejar encabezados CORS para solicitudes AJAX
+        if (req.headers['x-requested-with'] === 'XMLHttpRequest') {
+          proxyReq.setHeader('Access-Control-Allow-Origin', '*');
+          proxyReq.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE');
+          proxyReq.setHeader('Access-Control-Allow-Headers', '*');
+          proxyReq.setHeader('Access-Control-Allow-Credentials', 'true');
+        }
+
         // Log para debugging
         console.log('Proxy Request Headers:', proxyReq.getHeaders());
       } catch (error) {
@@ -70,8 +89,16 @@ export function createProxyConfig(account, req, targetDomain) {
     },
     onProxyRes: (proxyRes, req, res) => {
       try {
-        // Eliminar headers problemáticos
-        EXCLUDED_HEADERS.forEach(header => {
+        // Eliminar encabezados de seguridad restrictivos
+        const headersToRemove = [
+          'content-security-policy',
+          'x-frame-options',
+          'x-content-type-options',
+          'x-xss-protection',
+          'strict-transport-security'
+        ];
+
+        headersToRemove.forEach(header => {
           delete proxyRes.headers[header.toLowerCase()];
         });
 
@@ -105,6 +132,14 @@ export function createProxyConfig(account, req, targetDomain) {
           }
         }
 
+        // Configurar encabezados CORS para respuestas AJAX
+        if (req.headers['x-requested-with'] === 'XMLHttpRequest') {
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE');
+          res.setHeader('Access-Control-Allow-Headers', '*');
+          res.setHeader('Access-Control-Allow-Credentials', 'true');
+        }
+
         // Log para debugging
         console.log('Proxy Response Headers:', proxyRes.headers);
       } catch (error) {
@@ -113,6 +148,10 @@ export function createProxyConfig(account, req, targetDomain) {
     },
     onProxyReqWs: (proxyReq, req, socket) => {
       try {
+        // Configurar encabezados WebSocket
+        proxyReq.setHeader('Origin', account.url);
+        proxyReq.setHeader('Sec-WebSocket-Protocol', req.headers['sec-websocket-protocol'] || '');
+
         socket.on('error', (err) => {
           console.error('WebSocket error:', err);
         });
